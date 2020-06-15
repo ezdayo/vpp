@@ -1,0 +1,8 @@
+load * webcam.cfg
+initialise *
+set classification.classifier.bypassed yes
+set detection.mser.bypassed yes
+set detection.detector.bypassed no
+set detection.overlay.bypassed no
+set detection.running yes
+prompt

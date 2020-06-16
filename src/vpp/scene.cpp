@@ -144,7 +144,8 @@ cv::Point3f NoProjection::deproject(const cv::Point &p,
 
 Scene::Scene() noexcept
     : areas(), ts(0), fimage(), iimage(), oimage(), fdmap(), dmap(), 
-      projection(nullptr) {}
+      projection(nullptr) {
+}
 
 void Scene::use(cv::Mat image) noexcept {
     use(std::move(image), no_projection);
@@ -179,8 +180,7 @@ void Scene::use(cv::Mat image,
     }
 
     /* Update the projection delegate if not already set */
-    if ( (&pd != &no_projection) && 
-         (projection != &no_projection) ) {
+    if ( (&pd != &no_projection) || (projection == nullptr) ) {
         projection = &pd;
     }
 }
@@ -385,7 +385,7 @@ void Scene::predict(const Scene &newer) noexcept {
             auto size     = it->tracked.size;
             cv::Point3f c = centre;
             cv::Point3f s(size.x/2, size.y/2, 0);
-
+            
             auto tl       = pixel_at(c-s);
             auto br       = pixel_at(c+s);
             auto geom     = br - tl;

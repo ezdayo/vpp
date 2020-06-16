@@ -129,6 +129,7 @@ void State::predict(float dt) noexcept {
         transitionMatrix.at<float>(21) = dt;
 
         cv::KalmanFilter::predict().copyTo(state);
+
         validity -= dt;
     }
 }

@@ -39,6 +39,17 @@ template <typename ...Z> Stage<Z...>::Stage(bool update) noexcept
                      return onBypassedUpdate(yes); });
     expose(bypassed);
             
+    /* Define the enabled parameter */
+    disabled.denominate("disabled")
+            .describe("Is the pipeline stage disabled ?")
+            .characterise(Customisation::Trait::CONFIGURABLE);
+
+    disabled = false;
+    disabled.use(Customisation::Translator::BoolFormat::NO_YES);
+    disabled.trigger([this](const bool &yes) { 
+                     return onDisabledUpdate(yes); });
+    expose(disabled);
+            
     /* Define the uses parameter */
     engine.denominate("uses")
           .describe("Name of the current engine")
@@ -50,6 +61,10 @@ template <typename ...Z> Stage<Z...>::Stage(bool update) noexcept
 
 template <typename ...Z> void Stage<Z...>::bypass(bool yes) noexcept {
     bypassed = yes;
+}
+
+template <typename ...Z> void Stage<Z...>::disable(bool yes) noexcept {
+    disabled = yes;
 }
 
 template <typename ...Z> 
@@ -138,7 +153,22 @@ Customisation::Error Stage<Z...>::onBypassedUpdate(const bool &yes) noexcept {
         
     /* Inside a lock_guard scoped block */
     std::lock_guard<std::mutex> lock(suspend);
-    skipped = yes;
+
+    /* A disabled stage is always skipped! */
+    skipped = yes || disabled;
+
+    return Customisation::Error::NONE;
+}
+
+template <typename ...Z> 
+Customisation::Error Stage<Z...>::onDisabledUpdate(const bool &yes) noexcept {
+    
+    Customisation::Entity::disable(yes);
+
+    /* Bypass a disabled stage */
+    if (yes) {
+        bypassed = yes;
+    }
 
     return Customisation::Error::NONE;
 }

@@ -1,4 +1,6 @@
 inc/vpp/config.hpp
 deprecated/
 bld/
+debug/
+dbg/
 .vscode/*

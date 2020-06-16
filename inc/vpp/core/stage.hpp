@@ -55,6 +55,10 @@ template <typename ...Z> class Stage : public Parametrisable {
         void bypass(bool yes) noexcept;
         PARAMETER(Direct, None, Callable, bool) bypassed;
         
+        /* Stage enable handling */
+        void disable(bool yes) noexcept;
+        PARAMETER(Direct, None, Callable, bool) disabled;
+         
         /* Define and use the engines */
         Customisation::Error use(const std::string id, Engine &eng) noexcept;
         Customisation::Error use(const std::string &id) noexcept;
@@ -71,6 +75,7 @@ template <typename ...Z> class Stage : public Parametrisable {
         bool skipped;
         bool runpdatable;
         Customisation::Error onBypassedUpdate(const bool &yes) noexcept;
+        Customisation::Error onDisabledUpdate(const bool &yes) noexcept;
         
         std::unordered_map<std::string, std::reference_wrapper<Engine>> engines;
         Engine *pEngine;

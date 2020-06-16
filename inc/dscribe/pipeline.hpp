@@ -46,7 +46,7 @@ class Core : public Parametrisable {
                 ~Detection() noexcept = default;
 
                 VPP::Stage::Input<>           input;
-                //VPP::Stage::Input<>           depth;
+                VPP::Stage::Input<>           depth;
                 VPP::Stage::Blur              blur;
                 VPP::Stage::DNN::Detector     detector;
                 VPP::Stage::Clustering        clustering;

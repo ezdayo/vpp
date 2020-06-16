@@ -67,12 +67,16 @@ enable_cxx_compiler_flag_if_supported(-Wall)
 enable_cxx_compiler_flag_if_supported(-Wextra)
 enable_cxx_compiler_flag_if_supported(-pedantic)
 enable_cxx_compiler_flag_if_supported(-Wno-noexcept-type)
+enable_cxx_compiler_flag_if_supported(-fPIC)
 enable_cxx_compiler_flag_if_supported("${EXTRA_CXX_FLAGS}")
 
-#if(NOT ANDROID)
-#SET(CMAKE_AR  "gcc-ar")
-#SET(CMAKE_RANLIB  "gcc-ranlib")
-#endif()
+#
+# Necessary for link-time optimisation LTO
+#
+if(NOT ANDROID)
+set(CMAKE_AR  "gcc-ar")
+set(CMAKE_RANLIB  "gcc-ranlib")
+endif()
 
 #
 # Binary targets
@@ -92,7 +96,7 @@ include_directories(${PROJECT_SOURCE_DIR}/inc ${PROJECT_SOURCE_DIR}/src
 		    ${Readline_INCLUDE_DIRS})
 
 add_definitions(-DLOGTAG="VPP")
-set(CORE_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
+set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/dataset.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/engine.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/ocv.cpp
@@ -144,13 +148,13 @@ if(OPENCV_FREETYPE_FOUND)
 endif()
 
 if(OPENCV_IMGPROC_FOUND)
-	set(CORE_FILES ${CORE_FILES}
+	set(LIB_FILES ${LIB_FILES}
 	    	       ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/overlay.cpp)
 	    
 endif()
 
 if(ANDROID)
-	set(CORE_FILES ${CORE_FILES}
+	set(LIB_FILES ${LIB_FILES}
 	    ${PROJECT_SOURCE_DIR}/src/vpp/util/io/android_camera.cpp
 	    # Next source files are to remove !!!
 	    ${PROJECT_SOURCE_DIR}/src/vpp/deprecated/angine.cpp
@@ -164,7 +168,7 @@ endif()
 
 # Add platform specific files
 if(ANDROID)
-	set(SRC_FILES ${CORE_FILES}
+	set(JNI_FILES ${LIB_FILES}
 	    ${PROJECT_SOURCE_DIR}/src/dscribe/pipeline.cpp
 	    # Next source files are to update !!!
 	    ${PROJECT_SOURCE_DIR}/src/dscribe/deprecated/hmi/jni.cpp
@@ -172,13 +176,12 @@ if(ANDROID)
 	    ${PROJECT_SOURCE_DIR}/src/dscribe/deprecated/description.cpp
 	    ${PROJECT_SOURCE_DIR}/src/dscribe/deprecated/dscribe.jni.cpp)
 else()
-	set(SRC_FILES ${CORE_FILES}
-	    ${PROJECT_SOURCE_DIR}/src/dscribe/pipeline.cpp
-	    ${PROJECT_SOURCE_DIR}/src/dscribe/cli.cpp)
+	set(EXE_FILES ${PROJECT_SOURCE_DIR}/src/dscribe/pipeline.cpp
+	              ${PROJECT_SOURCE_DIR}/src/dscribe/cli.cpp)
 endif()
 
 if(ANDROID)
-add_library(vpp SHARED ${SRC_FILES})
+	add_library(vpp SHARED ${JNI_FILES})
 target_link_libraries(vpp ${OpenCV_STATIC_LDFLAGS} ${FFMPEG_LDFLAGS}
 		      ${CURL_STATIC_LDFLAGS} ${SSH2_STATIC_LDFLAGS}
 		      ${OPENSSL_STATIC_LDFLAGS} ${DARKNET_LDFLAGS}
@@ -194,10 +197,27 @@ install(TARGETS vpp
 	LIBRARY DESTINATION lib
 	PUBLIC_HEADER DESTINATION include)
 else()
-add_executable(vpp ${SRC_FILES})
-target_link_libraries(vpp ${OpenCV_LIBRARIES}
-		      ${OPENSSL_LDFLAGS} ${DARKNET_LDFLAGS}
-		      ${TESSERACT_LDFLAGS} ${CUSTOMISATION_STATIC_LDFLAGS}
-		      ${RS_LDFLAGS} Threads::Threads ${CURL_LDFLAGS}
-		      ${Readline_LIBRARY})
+
+# Building the VPP shared (dynamic) library
+add_library(vpp SHARED ${LIB_FILES})
+target_link_libraries(vpp ${OpenCV_LIBRARIES} ${CUSTOMISATION_STATIC_LDFLAGS}
+		      ${OPENSSL_LDFLAGS} ${Readline_LIBRARY}
+		      ${TESSERACT_LDFLAGS} ${RS_LDFLAGS} ${CURL_LDFLAGS}
+		      ${DARKNET_LDFLAGS} Threads::Threads)
+
+# Installing the VPP shared library
+install(TARGETS vpp 
+	LIBRARY DESTINATION lib)
+
+# Installing the VPP includes
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/inc/vpp/
+	DESTINATION include/vpp
+	FILES_MATCHING PATTERN "*.hpp"
+	PATTERN "*/deprecated/*" EXCLUDE
+	PATTERN "*/deprecated" EXCLUDE)
+
+# Building the d-scribe executable
+add_executable(d-scribe EXCLUDE_FROM_ALL ${EXE_FILES})
+target_link_libraries(d-scribe vpp)
+
 endif()

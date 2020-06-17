@@ -24,7 +24,8 @@ set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR} rev. ${VERSION_PATCH}")
 mark_as_advanced(VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_FULL)
 
 # Set options for the library
-set(VPP_TTF_FONT "arial.ttf" CACHE STRING "The VPP font for displaying results")
+set(VPP_TTF_FONT "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" 
+    CACHE STRING "The VPP font for displaying results")
 
 # CMake version 3.1+ is required (to enable C++11 options)
 # CMake version 3.6+ is required (to enable clang-tidy commands)
@@ -77,6 +78,9 @@ if(NOT ANDROID)
 set(CMAKE_AR  "gcc-ar")
 set(CMAKE_RANLIB  "gcc-ranlib")
 endif()
+
+# Add code quality related targets and rules
+include(mk/cxx-code-quality-rules.cmake)
 
 #
 # Binary targets
@@ -181,7 +185,7 @@ else()
 endif()
 
 if(ANDROID)
-	add_library(vpp SHARED ${JNI_FILES})
+add_library(vpp SHARED ${JNI_FILES})
 target_link_libraries(vpp ${OpenCV_STATIC_LDFLAGS} ${FFMPEG_LDFLAGS}
 		      ${CURL_STATIC_LDFLAGS} ${SSH2_STATIC_LDFLAGS}
 		      ${OPENSSL_STATIC_LDFLAGS} ${DARKNET_LDFLAGS}
@@ -221,3 +225,11 @@ add_executable(d-scribe EXCLUDE_FROM_ALL ${EXE_FILES})
 target_link_libraries(d-scribe vpp)
 
 endif()
+
+#
+# Non binary targets
+#
+
+# Add documentation generation targets and rules
+include(mk/doc-doxygen-rules.cmake)
+

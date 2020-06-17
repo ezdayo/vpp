@@ -3,4 +3,5 @@ deprecated/
 bld/
 debug/
 dbg/
+doc/
 .vscode/*

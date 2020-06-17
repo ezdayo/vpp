@@ -1,6 +1,16 @@
 #
 # This is the Makefile for defining multiple builds of different targets
 # Default UNIX commands (if not defined yet)
+#
+# This file is part of the Customisation framework (see link).
+#
+# Author:   Olivier Stoltz-Douchet <ezdayo@gmail.com>
+#
+# Copyright (c) 2019-2020 Olivier Stoltz-Douchet
+# License:  http://opensource.org/licenses/MIT MIT
+# Link:     https://github.com/ezdayo/customisation
+#
+
 CD?=cd
 CMAKE?=cmake
 CP?=cp -a

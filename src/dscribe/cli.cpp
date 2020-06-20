@@ -30,10 +30,10 @@
 #include "customisation.hpp"
 #include "dscribe/pipeline.hpp"
 #include "vpp/log.hpp"
-#include "vpp/util/ocv/overlay.hpp"
 
 using VPP::Scene;
 using VPP::Zone;
+using VPP::Engine::Overlay::ZoneStyle;
 
 static void onScene(const Scene &scn, int error) {
     if (error) {
@@ -59,9 +59,8 @@ static void onZone(DScribe::Core &dscribe,
 }
 
 /* Zone style adapter */
-VPP::UI::Overlay::ZoneStyle 
-    default_style(const VPP::Zone &zone,
-                  const VPP::UI::Overlay::ZoneStyle &baseStyle) noexcept {
+ZoneStyle default_style(const VPP::Zone &zone,
+                        const ZoneStyle &baseStyle) noexcept {
     auto style = baseStyle;
     auto id = zone.context.gid();
 
@@ -96,8 +95,8 @@ int main(int argc, char **argv) {
     DScribe::Core dscribe;
     Customisation::CLI cli(dscribe);
 
-    auto &overlay = dscribe.detection.overlay;
-    auto &style = overlay.ocv.overlay.defaultZoneStyle;
+    /* Set a standard type for zones */
+    auto &style = dscribe.detection.overlay.ocv.overlay.defaultZoneStyle;
     style.text.font =
         Util::OCV::Overlay::Font::use("DejaVuSans",
                         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
@@ -105,7 +104,6 @@ int main(int argc, char **argv) {
     style.box.color = { 255, 128, 128, 192 };
     style.text.color = style.box.color;
     style.adaptColor = true;
-    overlay.ocv.define("normal", default_style);
 
     /* Remove all kind of messages */
     FILE *stdnull = fopen("/dev/null", "w");

@@ -32,6 +32,17 @@
 namespace VPP {
 namespace Engine {
 namespace Overlay {
+ 
+using AAMode            = VPP::UI::Overlay::AAMode;
+using DrawingStyle      = VPP::UI::Overlay::DrawingStyle;
+using LayerStyle        = VPP::UI::Overlay::LayerStyle;
+using TextStyle         = VPP::UI::Overlay::TextStyle;
+using ZoneStyle         = VPP::UI::Overlay::ZoneStyle;
+using ZoneStylist       = VPP::UI::Overlay::ZoneStylist;
+using ZoneStyleDelegate = VPP::UI::Overlay::ZoneStyleDelegate;
+
+using Font              = VPP::UI::Overlay::Font;
+using Layer             = VPP::UI::Overlay::Layer;
 
 class Logo : public Customisation::Entity {
     public:
@@ -51,8 +62,7 @@ template <typename ...Z> class Core : public VPP::Core::Engine<Z...> {
 
         Error::Type process(Scene &scene, Z&...z) noexcept override;
 
-        void define(std::string name,
-                    VPP::UI::Overlay::ZoneStylist s) noexcept;
+        void define(std::string name, ZoneStylist s) noexcept;
 
         VPP::UI::Overlay                                         overlay;
         PARAMETER(Direct, WhiteListed, Callable, std::string)    style;
@@ -61,9 +71,8 @@ template <typename ...Z> class Core : public VPP::Core::Engine<Z...> {
     private:
         Customisation::Error onStyleUpdate(const std::string &s) noexcept;
 
-        VPP::UI::Overlay::ZoneStylist *                   stylist;
-        std::unordered_map<std::string,
-                           VPP::UI::Overlay::ZoneStylist> styles;
+        ZoneStylist *                                stylist;
+        std::unordered_map<std::string, ZoneStylist> styles;
 };
 
 /* Describing an engine for handling a full scene */

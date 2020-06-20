@@ -1,7 +1,7 @@
 # TODO
 
 - [ ] Generate a top-level configuration-specific vpp.hpp file;
- Create a full comprehensive vpp.pc file generator including Requires,
+- [ ]Create a full comprehensive vpp.pc file generator including Requires,
   Requires.Private, CFlags, Libs and Libs.private;
 - [ ] Add the vpp.pc file to the list of installed files;
 - [X] Add specific OCV/Font and VPP/Font classes for managing the
@@ -14,7 +14,7 @@
 - [ ] Enable support for code quality and documentation generation
   tools;
 - [ ] Add a specific stage for object tracking (with Kalman filter);
-- [ ] Create a filter string map to store filters;
+- [ ] Create a string-indexed map to store filters;
 - [ ] Add capabilities to define composed filters;
 - [ ] Enable Android, iOS, MacOS and MS Windows versions;
 - [ ] Improve the code documentation.

@@ -23,8 +23,7 @@ namespace Engine {
 namespace Overlay {
 
 static VPP::UI::Overlay::ZoneStyle 
-    default_style(const VPP::Zone & /*zone*/,
-                  const VPP::UI::Overlay::ZoneStyle &base) noexcept {
+    default_style(const VPP::Zone & /*zone*/, const ZoneStyle &base) noexcept {
     return base;
 }
 
@@ -74,8 +73,7 @@ Error::Type Core<Z...>::process(Scene &scene, Z&... /*z*/) noexcept {
 }
 
 template <typename ...Z> 
-void Core<Z...>::define(std::string sname,
-                        VPP::UI::Overlay::ZoneStylist s) noexcept {
+void Core<Z...>::define(std::string sname, ZoneStylist s) noexcept {
     auto found = styles.find(sname);
 
     if (found != styles.end()) {

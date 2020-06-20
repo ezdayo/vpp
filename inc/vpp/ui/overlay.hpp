@@ -26,11 +26,12 @@ namespace UI {
 class Overlay : public Util::OCV::Overlay {
 
     public:
+        using AAMode       = Util::OCV::Overlay::AAMode;
         using DrawingStyle = Util::OCV::Overlay::DrawingStyle;
-        using Layer        = Util::OCV::Overlay::Layer;
         using LayerStyle   = Util::OCV::Overlay::LayerStyle;
         using TextStyle    = Util::OCV::Overlay::TextStyle;
-
+        using Font         = Util::OCV::Overlay::Font;
+        using Layer        = Util::OCV::Overlay::Layer;
 
         using Util::OCV::Overlay::draw;
 

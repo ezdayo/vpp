@@ -23,6 +23,18 @@ namespace VPP {
 namespace Stage {
 namespace Overlay {
 
+using AAMode            = VPP::Engine::Overlay::AAMode;
+using DrawingStyle      = VPP::Engine::Overlay::DrawingStyle;
+using LayerStyle        = VPP::Engine::Overlay::LayerStyle;
+using TextStyle         = VPP::Engine::Overlay::TextStyle;
+using ZoneStyle         = VPP::Engine::Overlay::ZoneStyle;
+using ZoneStylist       = VPP::Engine::Overlay::ZoneStylist;
+using ZoneStyleDelegate = VPP::Engine::Overlay::ZoneStyleDelegate;
+
+using Font              = VPP::Engine::Overlay::Font;
+using Layer             = VPP::Engine::Overlay::Layer;
+using Logo              = VPP::Engine::Overlay::Logo;
+
 template <typename ...Z> class Core : public VPP::Core::Stage<Z...> {
     public:
         Core() noexcept;

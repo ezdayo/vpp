@@ -21,5 +21,5 @@
 
 # OPEN POINTS
 
-[ ] Add a specific stage for visualisation, or let the visualisation
+- [ ] Add a specific stage for visualisation, or let the visualisation
   be an observer in the application?

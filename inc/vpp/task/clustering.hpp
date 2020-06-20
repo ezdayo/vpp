@@ -22,7 +22,7 @@
 #include <mutex>
 
 #include "customisation/parameter.hpp"
-#include "error.hpp"
+#include "vpp/error.hpp"
 #include "vpp/task.hpp"
 
 namespace VPP {

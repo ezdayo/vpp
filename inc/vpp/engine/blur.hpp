@@ -20,7 +20,7 @@
 #pragma once
 
 #include "customisation/parameter.hpp"
-#include "error.hpp"
+#include "vpp/error.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/engine.hpp"
 #include "vpp/task/blur.hpp"

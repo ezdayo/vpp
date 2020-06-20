@@ -23,10 +23,6 @@ set(VERSION_PATCH   0   CACHE STRING "Project patch version number.")
 set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR} rev. ${VERSION_PATCH}")
 mark_as_advanced(VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_FULL)
 
-# Set options for the library
-set(VPP_TTF_FONT "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf" 
-    CACHE STRING "The VPP font for displaying results")
-
 # CMake version 3.1+ is required (to enable C++11 options)
 # CMake version 3.6+ is required (to enable clang-tidy commands)
 # CMake version 3.10+ is required (to enable cppcheck commands)
@@ -47,8 +43,8 @@ pkg_check_modules(LEPTONICA REQUIRED lept)
 pkg_check_modules(PNG REQUIRED libpng)
 pkg_check_modules(SSH2 REQUIRED libssh2)
 else()
-find_package(OpenCV COMPONENTS core REQUIRED)
-find_package(OpenCV COMPONENTS dnn freetype imgcodecs imgproc highgui objdetect
+find_package(OpenCV COMPONENTS core imgproc REQUIRED)
+find_package(OpenCV COMPONENTS dnn freetype imgcodecs highgui objdetect
        	                       video videoio xfeatures2d)
 endif()
 
@@ -147,8 +143,6 @@ set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 
 # Add specific files depending on available libraries
 if(OPENCV_FREETYPE_FOUND)
-	add_definitions(-DUSE_SPECIAL_FONT="${VPP_TTF_FONT}") 
-	message(STATUS "Using \"${VPP_TTF_FONT}\" for the VPP display")
 endif()
 
 if(OPENCV_IMGPROC_FOUND)

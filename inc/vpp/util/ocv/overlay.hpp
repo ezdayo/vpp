@@ -21,9 +21,6 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
-#ifdef USE_SPECIAL_FONT
-#include <opencv2/freetype.hpp>
-#endif
 #include <opencv2/imgproc.hpp>
 
 namespace Util {
@@ -48,11 +45,36 @@ class Overlay {
             double saturation;
         };
 
+        class Font {
+            public:
+                virtual ~Font() noexcept;
+
+                /* Name and location of the font */
+                const std::string name;
+                const std::string location;
+
+                /* Getting a Font object using a static factory method */
+                static Font *any() noexcept;
+                static Font *use(const std::string &name) noexcept;
+                static Font *use(const std::string &name,
+                                 const std::string &path) noexcept;
+
+                /* Drawing some text */
+                virtual void write(cv::Mat &frame, const std::string &text,
+                                   const cv::Point &at, int thickness,
+                                   AAMode antialiasing, cv::Scalar color,
+                                   int height) const noexcept;
+
+            protected:
+                explicit Font(std::string id, std::string path) noexcept;
+        };
+        
         struct TextStyle final {
             int        thickness;
             AAMode     antialiasing;
             cv::Scalar color;
             int        height;
+            Font *     font;
         };
 
         class Layer {
@@ -75,6 +97,7 @@ class Overlay {
             private:
                 cv::Mat fg, msk;
         };
+
 
         Overlay() noexcept;
         ~Overlay() noexcept;
@@ -114,11 +137,6 @@ class Overlay {
         DrawingStyle defaultDrawingStyle;
         LayerStyle   defaultLayerStyle;
         TextStyle    defaultTextStyle;
-
-    private:
-#ifdef USE_SPECIAL_FONT
-        cv::Ptr<cv::freetype::FreeType2> FT2;
-#endif
 };
 
 }  // namespace OCV

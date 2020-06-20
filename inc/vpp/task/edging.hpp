@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#include "error.hpp"
+#include "vpp/error.hpp"
 #include "vpp/task.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/types.hpp"

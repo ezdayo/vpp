@@ -25,7 +25,7 @@
 #include <string>
 
 #include "customisation/parameter.hpp"
-#include "error.hpp"
+#include "vpp/error.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/engine.hpp"
 #include "vpp/util/io/input.hpp"

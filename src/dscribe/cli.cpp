@@ -30,6 +30,7 @@
 #include "customisation.hpp"
 #include "dscribe/pipeline.hpp"
 #include "vpp/log.hpp"
+#include "vpp/util/ocv/overlay.hpp"
 
 using VPP::Scene;
 using VPP::Zone;
@@ -57,10 +58,54 @@ static void onZone(DScribe::Core &dscribe,
     }
 }
 
+/* Zone style adapter */
+VPP::UI::Overlay::ZoneStyle 
+    default_style(const VPP::Zone &zone,
+                  const VPP::UI::Overlay::ZoneStyle &baseStyle) noexcept {
+    auto style = baseStyle;
+    auto id = zone.context.gid();
+
+    if ( (id == 0) || (id == 65597) ) {
+        style.box.color = { 255, 0, 0, 192 };
+    } else if (id == 65536) {
+        style.box.color = { 0, 255, 255, 192 };
+    } else if (id == 65577) {
+        style.box.color = { 0, 255, 0, 192 };
+    }  else if ( (id >= 65581) && 
+                (id <= 65587) ) {
+        style.box.color = { 255, 0, 255, 192 };
+    } else if ( (id == 65575) ||
+                (id == 65576) ||
+                (id == 65578) ||
+                (id == 65579) ) {
+        style.box.color = { 255, 255, 0, 192 };
+    } else if (id == 65598) {
+        style.box.color = { 0, 0, 255, 192 };
+    }
+
+    style.text.color = style.box.color;
+
+    return style;
+}
+
+/*
+ * Program Entry Point
+ */
 int main(int argc, char **argv) {
 #ifdef CUSTOMISATION_HAS_CLI
     DScribe::Core dscribe;
     Customisation::CLI cli(dscribe);
+
+    auto &overlay = dscribe.detection.overlay;
+    auto &style = overlay.ocv.overlay.defaultZoneStyle;
+    style.text.font =
+        Util::OCV::Overlay::Font::use("DejaVuSans",
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+    style.box.thickness = -4;
+    style.box.color = { 255, 128, 128, 192 };
+    style.text.color = style.box.color;
+    style.adaptColor = true;
+    overlay.ocv.define("normal", default_style);
 
     /* Remove all kind of messages */
     FILE *stdnull = fopen("/dev/null", "w");

@@ -16,10 +16,17 @@
 
 #include "vpp/config.hpp"
 
+#include <fstream>
+#include <memory>
+#ifdef OPENCV_FREETYPE_FOUND
+#include <opencv2/freetype.hpp>
+#endif
 #ifdef OPENCV_IMGCODECS_FOUND
 #include <opencv2/imgcodecs.hpp>
 #endif
+#include <opencv2/imgproc.hpp>
 #include <sstream>
+#include <unordered_map>
 
 #include "vpp/log.hpp"
 #include "vpp/util/ocv/overlay.hpp"
@@ -28,9 +35,233 @@
 namespace Util {
 namespace OCV {
 
-#ifndef USE_SPECIAL_FONT
-const static auto STANDARD_FONT(cv::FONT_HERSHEY_SIMPLEX);
+namespace Font {
+
+    /* Valid internal Hershey Fonts */
+    static std::unordered_map<std::string,
+                              enum cv::HersheyFonts> valid_internals = {
+    { "HERSHEY_SIMPLEX",        cv::FONT_HERSHEY_SIMPLEX },
+    { "HERSHEY_PLAIN",          cv::FONT_HERSHEY_PLAIN },
+    { "HERSHEY_DUPLEX",         cv::FONT_HERSHEY_DUPLEX },
+    { "HERSHEY_COMPLEX",        cv::FONT_HERSHEY_COMPLEX },
+    { "HERSHEY_TRIPLEX",        cv::FONT_HERSHEY_TRIPLEX },
+    { "HERSHEY_COMPLEX_SMALL",  cv::FONT_HERSHEY_COMPLEX_SMALL },
+    { "HERSHEY_SCRIPT_SIMPLEX", cv::FONT_HERSHEY_SCRIPT_SIMPLEX },
+    { "HERSHEY_SCRIPT_COMPLEX", cv::FONT_HERSHEY_SCRIPT_COMPLEX },
+    { "ITALIC",                 cv::FONT_ITALIC } };
+
+    class Internal : public Overlay::Font {
+        public:
+            explicit Internal(std::string name, std::string path,
+                              int id) noexcept : 
+                Overlay::Font(name, path),
+                font(static_cast<enum cv::HersheyFonts >(id)) {
+                ASSERT(id >= 0, "Invalid Hershey Font id provided : %d", id);
+            }
+
+            virtual ~Internal() noexcept = default;
+
+            static int valid(const std::string &path) noexcept {
+                static const std::string italix("ITALIC");
+                std::string              key(path);
+                int                      id(0);
+
+                /* If the path ends with "_ITALIC" then keep the italic mask */
+                if ( (path.size() > (italix.size() + 1)) && 
+                     (path.compare(path.size()-italix.size(), italix.size(),
+                                   italix) == 0) ) {
+                    id = valid_internals[italix];
+                    key.resize(path.size()-italix.size()-1);
+                }
+
+                /* Try to find the required font and return the font id if
+                 * found or -1 if not found */
+                auto found = valid_internals.find(key);
+                if (found != valid_internals.end()) {
+                    return id + found->second;
+                } else {
+                    return -1;
+                }
+            };
+
+            /* Drawing some text */
+            virtual void write(cv::Mat &frame, const std::string &text,
+                               const cv::Point &at, int thickness,
+                               Overlay::AAMode antialiasing, cv::Scalar color,
+                               int height) const noexcept {
+                /* Always use a "coherent" thickness */
+                if (thickness <= 0) {
+                    return;
+                }
+
+                std::istringstream input(text);
+                auto start = input.tellg();
+                std::string line;
+                cv::Size maxSz, curSz;
+                int lineCnt = 0;
+                int baseLine;
+                auto fontScale = static_cast<double>(height)/32.0;
+
+                while (std::getline(input, line)) {
+                    ++lineCnt;
+                    /* Default fonts are not accentuented, hence remove the 
+                     * accents */
+                    Util::UTF8::toASCII(line);
+                    curSz = cv::getTextSize(line, font, fontScale, thickness,
+                                            &baseLine);
+                    if (curSz.width > maxSz.width) maxSz = curSz;
+                }
+
+                cv::Point offset = cv::Point(-maxSz.width, -lineCnt*height);
+
+                input.clear();
+                input.seekg(start, input.beg);
+                lineCnt = 0;
+                while (std::getline(input, line)) {
+                    Util::UTF8::toASCII(line);
+                    cv::putText(frame, line, 
+                                at + offset/2 + cv::Point(0,(lineCnt+1)*height),
+                                font, fontScale, color, thickness, 
+                                static_cast<int>(antialiasing), false);
+                    ++lineCnt;
+                }
+            }
+            
+        private:
+            enum cv::HersheyFonts font;
+    };
+
+#ifdef OPENCV_FREETYPE_FOUND
+    class TTF : public Overlay::Font {
+        public:
+            explicit TTF(std::string name, std::string path) noexcept :
+                Overlay::Font(name, path) {
+                font = cv::freetype::createFreeType2();
+                font->loadFontData(path, 0);
+            }
+
+            virtual ~TTF() noexcept = default;
+
+            /* Drawing some text */
+            virtual void write(cv::Mat &frame, const std::string &text,
+                               const cv::Point &at, int thickness,
+                               Overlay::AAMode antialiasing, cv::Scalar color,
+                               int height) const noexcept {
+                /* Always use a "coherent" thickness */
+                if (thickness <= 0) {
+                    return;
+                }
+
+                std::istringstream input(text);
+                auto start = input.tellg();
+                std::string line;
+                cv::Size maxSz, curSz;
+                int lineCnt = 0;
+                int baseLine;
+    
+                while (std::getline(input, line)) {
+                    ++lineCnt;
+                    curSz = font->getTextSize(line, height, -1, &baseLine);
+                    if (curSz.width > maxSz.width) maxSz = curSz;
+                }
+
+                cv::Point offset = cv::Point(-maxSz.width, -lineCnt*height);
+
+                input.clear();
+                input.seekg(start, input.beg);
+                lineCnt = 0;
+                while (std::getline(input, line)) {
+
+                    font->putText(frame, line, 
+                                  at + offset/2 +
+                                  cv::Point(0, ((4*lineCnt-1)*height)/4),
+                                  height, color, -1, 
+                                  static_cast<int>(antialiasing), false);
+                    ++lineCnt;
+                }
+            }
+            
+        private:
+            cv::Ptr<cv::freetype::FreeType2> font;
+    };
 #endif
+
+}  // namespace Font
+
+/* Static dictionnary for all defined fonts */
+static std::unordered_map<std::string,
+                          std::unique_ptr<Overlay::Font>> defined_fonts;
+
+Overlay::Font::Font(std::string id, std::string path) noexcept
+    : name(std::move(id)), location(std::move(path)) {}
+Overlay::Font::~Font() noexcept = default;
+
+Overlay::Font *Overlay::Font::any() noexcept {
+    return use("HERSHEY_SIMPLEX");
+}
+
+Overlay::Font *Overlay::Font::use(const std::string &name) noexcept {
+    auto found = defined_fonts.find(name);
+
+    /* If the requested font is found, then use it */
+    if (found != defined_fonts.end()) {
+        return found->second.get();
+    }
+
+    /* Otherwise get the default Hershey Simplex font */
+    found = defined_fonts.find("HERSHEY_SIMPLEX");
+    if (found != defined_fonts.end()) {
+        return found->second.get();
+    }
+
+    /* Otherwise create and use the default Hershey Simplex font */
+    return use("HERSHEY_SIMPLEX", "HERSHEY_SIMPLEX");
+}
+
+Overlay::Font *Overlay::Font::use(const std::string &name,
+                                  const std::string &path) noexcept {
+    auto found = defined_fonts.find(name);
+
+    /* If the requested font is found, then use it if it has the same path */
+    if (found != defined_fonts.end()) {
+        if (found->second->location == name) {
+            LOGW("Overlay::Font::use(name, path): Redefining font %s with a "
+                 "different font path %s! Keeping the initial one at %s.",
+                 name.c_str(), path.c_str(), found->second->location.c_str());
+        }    
+        return found->second.get();
+    }
+
+    /* Create an internal font if it is an internal font path */
+    auto id = Util::OCV::Font::Internal::valid(path);
+    if (id >= 0) {
+        defined_fonts.emplace(name, 
+                              std::move(std::unique_ptr<Overlay::Font>
+                              (new Util::OCV::Font::Internal(name, path, id))));
+        return use(name);
+    }
+
+#ifdef OPENCV_FREETYPE_FOUND
+    /* Otherwise try to create a freetype font as it was not an internal path */
+    std::ifstream ifs(path);
+    if (ifs.is_open()) {
+        defined_fonts.emplace(name, 
+                              std::move(std::unique_ptr<Overlay::Font>
+                              (new Util::OCV::Font::TTF(name, path))));
+        return use(name);
+    }
+#endif
+
+    /* Otherwise get the default Hershey Simplex font in last resort */
+    return use("HERSHEY_SIMPLEX", "HERSHEY_SIMPLEX");
+}
+
+void Overlay::Font::write(cv::Mat &/*frame*/, const std::string &/*text*/,
+                          const cv::Point &/*at*/, int /*thickness*/,
+                          AAMode /*antialiasing*/, cv::Scalar /*color*/,
+                          int /*height*/) const noexcept {
+    LOGE("Overlay::Font::write() has to be implemented in all child classes.");
+}
 
 Overlay::Layer::Layer() noexcept : width(0), height(0), fg(), msk() {}
 Overlay::Layer::~Layer() noexcept = default;
@@ -130,11 +361,6 @@ Overlay::Overlay() noexcept {
     resetDefaultDrawingStyle();
     resetDefaultLayerStyle();
     resetDefaultTextStyle();
-
-#ifdef USE_SPECIAL_FONT
-    FT2 = cv::freetype::createFreeType2();
-    FT2->loadFontData(USE_SPECIAL_FONT, 0);
-#endif
 }
 
 Overlay::~Overlay() noexcept = default;
@@ -154,6 +380,7 @@ void Overlay::resetDefaultTextStyle() noexcept {
     defaultTextStyle.antialiasing = AAMode::LINE_8;
     defaultTextStyle.color        = { 0, 255, 0 };
     defaultTextStyle.height       = 32;
+    defaultTextStyle.font         = nullptr;
 }
         
 void Overlay::draw(cv::Mat &frame, const cv::Size &box) const noexcept {
@@ -235,57 +462,12 @@ void Overlay::draw(cv::Mat &frame, const std::string &text, const cv::Point &at)
 
 void Overlay::draw(cv::Mat &frame, const std::string &text, const cv::Point &at,
                    const TextStyle &style) const noexcept {
-        
-    /* Always use a "coherent" thickness */
-    if (style.thickness <= 0) {
-        return;
+    auto font = style.font;
+    if (font == nullptr) {
+        font = Font::any(); 
     }
-
-    std::istringstream input(text);
-    auto start = input.tellg();
-    std::string line;
-    cv::Size maxSz, curSz;
-    int lineCnt = 0;
-    int baseLine;
-#ifndef USE_SPECIAL_FONT
-    auto fontScale = static_cast<double>(style.height)/32.0;
-#endif
-
-    while (std::getline(input, line)) {
-        ++lineCnt;
-#ifdef USE_SPECIAL_FONT
-        curSz = FT2->getTextSize(line, style.height, -1, &baseLine);
-#else
-        /* Default fonts are not accentuented, hence remove the accents */
-        Utils::UTF8::toASCII(line);
-        curSz = cv::getTextSize(line, STANDARD_FONT, fontScale, style.thickness,
-                                &baseLine);
-#endif
-        if (curSz.width > maxSz.width) maxSz = curSz;
-    }
-
-    cv::Point offset = cv::Point(-maxSz.width, -lineCnt*style.height);
-
-    input.clear();
-    input.seekg(start, input.beg);
-    lineCnt = 0;
-    while (std::getline(input, line)) {
-
-#ifdef USE_SPECIAL_FONT
-        FT2->putText(frame, line, 
-                     at + offset/2 +
-                     cv::Point(0, ((4*lineCnt-1)*style.height)/4),
-                     style.height, style.color, -1, 
-                    static_cast<int>(style.antialiasing), false);
-#else
-        Utils::UTF8::toASCII(line);
-        cv::putText(frame, line, 
-                    at + offset/2 + cv::Point(0, (lineCnt+1)*style.height),
-                    STANDARD_FONT, fontScale, style.color, style.thickness, 
-                    static_cast<int>(style.antialiasing), false);
-#endif
-        ++lineCnt;
-    }
+    font->write(frame, text, at, style.thickness, style.antialiasing,
+                style.color, style.height);
 }
 
 }  // namespace OCV

@@ -31,11 +31,11 @@
 /* Flag set if the OpenCV DNN library is available */
 #cmakedefine OPENCV_DNN_FOUND
 
+/* Flag set if the OpenCV Freetype library is available */
+#cmakedefine OPENCV_FREETYPE_FOUND
+
 /* Flag set if the OpenCV Image Codecs library is available */
 #cmakedefine OPENCV_IMGCODECS_FOUND
-
-/* Flag set if the OpenCV Image Processing library is available */
-#cmakedefine OPENCV_IMGPROC_FOUND
 
 /* Flag set if the OpenCV High GUI library is available */
 #cmakedefine OPENCV_HIGHGUI_FOUND

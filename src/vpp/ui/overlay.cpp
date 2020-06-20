@@ -14,8 +14,6 @@
  *
  **/
 
-#include <unordered_map>
-
 #include "vpp/ui/overlay.hpp"
 
 namespace VPP {

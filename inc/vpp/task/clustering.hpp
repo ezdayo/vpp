@@ -22,6 +22,7 @@
 #include <mutex>
 
 #include "customisation/parameter.hpp"
+#include "vpp/config.hpp"
 #include "vpp/error.hpp"
 #include "vpp/task.hpp"
 
@@ -49,6 +50,7 @@ class DilateAndJoin : public Task::ForScene {
         virtual Error::Type process(Scene &scn) noexcept override;
 };
 
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
 class Similarity : public Task::ForScene {
     public:
         explicit Similarity(const int mode) noexcept;
@@ -63,6 +65,7 @@ class Similarity : public Task::ForScene {
     protected:
         virtual Error::Type process(Scene &scn) noexcept override;
 };
+#endif
 
 }  // namespace Clustering
 }  // namespace Task

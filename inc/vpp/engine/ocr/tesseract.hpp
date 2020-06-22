@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifndef VPP_HAS_TESSERACT_SUPPORT
+# error ERROR: VPP does not support the Tesseract OCR!
+#endif
+
 #include <string>
 #include <tesseract/baseapi.h>
 

@@ -18,10 +18,10 @@
 
 #include <fstream>
 #include <memory>
-#ifdef OPENCV_FREETYPE_FOUND
+#ifdef VPP_HAS_EXTERNAL_FONT_SUPPORT
 #include <opencv2/freetype.hpp>
 #endif
-#ifdef OPENCV_IMGCODECS_FOUND
+#ifdef VPP_HAS_IMAGE_CODEC_SUPPORT
 #include <opencv2/imgcodecs.hpp>
 #endif
 #include <opencv2/imgproc.hpp>
@@ -131,7 +131,7 @@ namespace Font {
             enum cv::HersheyFonts font;
     };
 
-#ifdef OPENCV_FREETYPE_FOUND
+#ifdef VPP_HAS_EXTERNAL_FONT_SUPPORT
     class TTF : public Overlay::Font {
         public:
             explicit TTF(std::string name, std::string path) noexcept :
@@ -241,7 +241,7 @@ Overlay::Font *Overlay::Font::use(const std::string &name,
         return use(name);
     }
 
-#ifdef OPENCV_FREETYPE_FOUND
+#ifdef VPP_HAS_EXTERNAL_FONT_SUPPORT
     /* Otherwise try to create a freetype font as it was not an internal path */
     std::ifstream ifs(path);
     if (ifs.is_open()) {
@@ -302,7 +302,7 @@ void Overlay::Layer::merge(cv::Mat &frame, const cv::Point &at,
 }
 
 void Overlay::Layer::set(const std::string &filename) noexcept {
-#ifdef OPENCV_IMGCODECS_FOUND
+#ifdef VPP_HAS_IMAGE_CODEC_SUPPORT
     if (filename.empty()) {
         clear();
         return;
@@ -320,6 +320,10 @@ void Overlay::Layer::set(const std::string &filename) noexcept {
     cv::split(bgra, chans);
     cv::merge(chans, 3, bgr);
     set(bgr, chans[3]);
+#else
+    LOGW("Overlay::Layer::set(filename): Cannot read %s since there is no such "
+         "support provided by OpenCV. Rebuild the VPP with support for OpenCV "
+         "imgproc.", filename.c_str());
 #endif
 }
 

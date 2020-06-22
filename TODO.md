@@ -1,13 +1,13 @@
 # TODO
 
 - [ ] Generate a top-level configuration-specific vpp.hpp file;
-- [ ]Create a full comprehensive vpp.pc file generator including Requires,
+- [ ] Create a full comprehensive vpp.pc file generator including Requires,
   Requires.Private, CFlags, Libs and Libs.private;
 - [ ] Add the vpp.pc file to the list of installed files;
 - [X] Add specific OCV/Font and VPP/Font classes for managing the
   presence or absence of OpenCV\_freetype library and allowing
   runtime font update;
-- [ ] Make the CMakeList modular so that it manages configurations
+- [X] Make the CMakeList modular so that it manages configurations
   where some of the input libraries (except mandatory ones) are
   missing;
 - [ ] Enable the generation of a static VPP library;

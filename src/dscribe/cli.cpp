@@ -59,7 +59,7 @@ static void onZone(DScribe::Core &dscribe,
 }
 
 /* Zone style adapter */
-ZoneStyle default_style(const VPP::Zone &zone,
+ZoneStyle example_style(const VPP::Zone &zone,
                         const ZoneStyle &baseStyle) noexcept {
     auto style = baseStyle;
     auto id = zone.context.gid();
@@ -95,8 +95,12 @@ int main(int argc, char **argv) {
     DScribe::Core dscribe;
     Customisation::CLI cli(dscribe);
 
+    /* Define an example ZoneStylist for OCV overlay engine */
+    auto &overlay_engine = dscribe.detection.overlay.ocv;
+    overlay_engine.define("example", example_style);
+
     /* Set a standard type for zones */
-    auto &style = dscribe.detection.overlay.ocv.overlay.defaultZoneStyle;
+    auto &style = overlay_engine.overlay.defaultZoneStyle;
     style.text.font =
         Util::OCV::Overlay::Font::use("DejaVuSans",
                         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");

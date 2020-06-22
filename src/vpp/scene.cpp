@@ -27,7 +27,8 @@ namespace VPP {
 static Zone invalid;
 
 Zone::Zone(BBox bbox, std::vector<Prediction> preds) noexcept
-    : BBox(std::move(bbox)), step(0) {
+    : BBox(std::move(bbox)), tracked(Tracker::State::DEFAULT),
+      contour(), description(), step(0) {
         predict(std::move(preds));
 }
 

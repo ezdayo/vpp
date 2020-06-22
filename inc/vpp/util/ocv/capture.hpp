@@ -1,6 +1,6 @@
 /**
  *
- * @file      vpp/util/io/opencv_capture.hpp
+ * @file      vpp/util/ocv/capture.hpp
  *
  * @brief     This is the OpenCV Capture Input class definition
  *
@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifndef VPP_HAS_OPENCV_VIDEO_IO_SUPPORT
+# error ERROR: VPP does not support OpenCV video I/O!
+#endif
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <string>
@@ -23,17 +28,17 @@
 #include "vpp/util/io/input.hpp"
 
 namespace Util {
-namespace IO {
+namespace OCV {
 
-class OCVCapture : public Input {
+class Capture : public Util::IO::Input {
     public:
-        OCVCapture() noexcept;
-        virtual ~OCVCapture() noexcept;
+        Capture() noexcept;
+        virtual ~Capture() noexcept;
         
-        OCVCapture(const OCVCapture& other) = delete;
-        OCVCapture(OCVCapture&& other) = delete;
-        OCVCapture& operator=(const OCVCapture& other) = delete;
-        OCVCapture& operator=(OCVCapture&& other) = delete;
+        Capture(const Capture& other) = delete;
+        Capture(Capture&& other) = delete;
+        Capture& operator=(const Capture& other) = delete;
+        Capture& operator=(Capture&& other) = delete;
 
         virtual int open(const std::string &protocol, int id) noexcept override;
         int open(int id) noexcept;
@@ -55,5 +60,5 @@ class OCVCapture : public Input {
         cv::VideoCapture cap;
 };
 
-} // namespace IO
+} // namespace OCV
 } // namespace Util

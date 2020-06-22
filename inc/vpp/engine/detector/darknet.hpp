@@ -19,6 +19,11 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifndef VPP_HAS_DARKNET_SUPPORT
+# error ERROR: VPP does not have support of Darknet!
+#endif
+
 #include <opencv2/core/core.hpp>
 
 #include "customisation/parameter.hpp"

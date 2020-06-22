@@ -25,58 +25,71 @@ namespace Tracker {
 State State::DEFAULT;
 
 State::State() noexcept : 
-            cv::KalmanFilter(length, Measure::length, 0, CV_32F), 
-            centre(), speed(), size(),
-            state(length, 1, CV_32F, &centre.x, cv::Mat::AUTO_STEP),
-            validity(0), timeout(10) {
-
+#ifdef VPP_HAS_TRACKING_SUPPORT
+            cv::KalmanFilter(length, Measure::length, 0, CV_32F),
+#endif 
+            centre(), size()
+#ifdef VPP_HAS_TRACKING_SUPPORT
+            , speed(), state(length, 1, CV_32F, &centre.x, cv::Mat::AUTO_STEP),
+            validity(0), timeout(10) 
+#endif
+            {
+#ifdef VPP_HAS_TRACKING_SUPPORT
     // Transition state matrix A
-    // [ 1 0 0  dt 0  0  0 0 ]
-    // [ 0 1 0  0  dt 0  0 0 ]
-    // [ 0 0 1  0  0  dt 0 0 ]
-    // [ 0 0 0  1  0  0  0 0 ]
-    // [ 0 0 0  0  1  0  0 0 ]
-    // [ 0 0 0  0  0  1  0 0 ]
-    // [ 0 0 0  0  0  0  1 0 ]
-    // [ 0 0 0  0  0  0  0 1 ]
+    // [ 1 0 0 0 0  dt 0  0 ]
+    // [ 0 1 0 0 0  0  dt 0 ]
+    // [ 0 0 1 0 0  0  0  dt]
+    // [ 0 0 0 1 0  0  0  0 ]
+    // [ 0 0 0 0 1  0  0  0 ]
+    // [ 0 0 0 0 0  1  0  0 ]
+    // [ 0 0 0 0 0  0  1  0 ]
+    // [ 0 0 0 0 0  0  0  1 ]
     cv::setIdentity(transitionMatrix);
     
     // Measure Matrix H
     // [ 1 0 0 0 0 0 0 0 ]
     // [ 0 1 0 0 0 0 0 0 ]
     // [ 0 0 1 0 0 0 0 0 ]
-    // [ 0 0 0 0 0 0 1 0 ]
-    // [ 0 0 0 0 0 0 0 1 ]
+    // [ 0 0 0 1 0 0 0 0 ]
+    // [ 0 0 0 0 1 0 0 0 ]
     measurementMatrix = cv::Mat::zeros(Measure::length, length, CV_32F);
     measurementMatrix.at<float>(0)  = 1.0f;
     measurementMatrix.at<float>(9)  = 1.0f;
     measurementMatrix.at<float>(18) = 1.0f;
-    measurementMatrix.at<float>(30) = 1.0f;
-    measurementMatrix.at<float>(39) = 1.0f;
+    measurementMatrix.at<float>(27) = 1.0f;
+    measurementMatrix.at<float>(36) = 1.0f;
     
     // Process Noise Covariance Matrix Q
     // [ Ex   0    0    0     0     0    0    0  ]
     // [ 0    Ey   0    0     0     0    0    0  ]
     // [ 0    0    Ez   0     0     0    0    0  ]
-    // [ 0    0    0    Ev_x  0     0    0    0  ]
-    // [ 0    0    0    0     Ev_y  0    0    0  ]
-    // [ 0    0    0    0     0     Ev_z 0    0  ]
-    // [ 0    0    0    0     0     0    Ew   0  ]
-    // [ 0    0    0    0     0     0    0    Eh ]
+    // [ 0    0    0    Ew    0     0    0    0  ]
+    // [ 0    0    0    0     Eh    0    0    0  ]
+    // [ 0    0    0    0     0     Ev_x 0    0  ]
+    // [ 0    0    0    0     0     0    Ev_y 0  ]
+    // [ 0    0    0    0     0     0    0    Ev_z ]
     cv::setIdentity(processNoiseCov, cv::Scalar(1e-2));
-    processNoiseCov.at<float>(27) = 5.0f;
-    processNoiseCov.at<float>(36) = 5.0f;
     processNoiseCov.at<float>(45) = 5.0f;
+    processNoiseCov.at<float>(54) = 5.0f;
+    processNoiseCov.at<float>(63) = 5.0f;
 
     // Measures Noise Covariance Matrix R
     cv::setIdentity(measurementNoiseCov, cv::Scalar(1e-1));
+#endif
 }
 
 State::State(const State &other) noexcept : 
+#ifdef VPP_HAS_TRACKING_SUPPORT
             cv::KalmanFilter(),
-            centre(other.centre), speed(other.speed), size(other.size),
+#endif
+            centre(other.centre), size(other.size)
+#ifdef VPP_HAS_TRACKING_SUPPORT
+            , speed(other.speed), 
             state(length, 1, CV_32F, &centre.x, cv::Mat::AUTO_STEP),
-            validity(other.validity), timeout(other.timeout) {
+            validity(other.validity), timeout(other.timeout)
+#endif
+            {
+#ifdef VPP_HAS_TRACKING_SUPPORT
 #define KF_MATRIX_COPY(x) x = std::move(other.x.clone())
     KF_MATRIX_COPY(statePre);
     KF_MATRIX_COPY(statePost);
@@ -93,10 +106,13 @@ State::State(const State &other) noexcept :
     KF_MATRIX_COPY(temp3);
     KF_MATRIX_COPY(temp4);
     KF_MATRIX_COPY(temp5);
+#endif
 }
 
 State &State::operator = (const Measure &measure) noexcept {
+#ifdef VPP_HAS_TRACKING_SUPPORT
     validity = 0;
+#endif
     correct(measure);
     return *this;
 }
@@ -116,12 +132,15 @@ float State::similarity(const State &other) const noexcept {
  
 
 void State::predictability(float time) noexcept {
+#ifdef VPP_HAS_TRACKING_SUPPORT
     if (time > 0) {
         timeout = time;
     }
+#endif
 }
 
 void State::predict(float dt) noexcept {
+#ifdef VPP_HAS_TRACKING_SUPPORT
     if (valid()) {
         /* Set the time delta */
         transitionMatrix.at<float>(3)  = dt;
@@ -132,9 +151,11 @@ void State::predict(float dt) noexcept {
 
         validity -= dt;
     }
+#endif
 }
 
 void State::correct(const Measure &measure) noexcept {
+#ifdef VPP_HAS_TRACKING_SUPPORT
     if (valid()) {
         cv::KalmanFilter::correct(measure);
     } else {
@@ -149,14 +170,18 @@ void State::correct(const Measure &measure) noexcept {
         errorCovPre.at<float>(63) = 1;
 
         centre = measure.centre;
-        speed  = Util::OCV::Triplet();
         size   = measure.size;
+        speed  = Util::OCV::Triplet();
         
         statePost = *this; 
     }
     
     /* Once corrected, validity is improved in all cases */ 
     validity = timeout;
+#else
+    centre = measure.centre;
+    size   = measure.size;
+#endif
 }
 
 }  // namespace Tracker

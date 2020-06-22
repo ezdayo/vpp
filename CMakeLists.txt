@@ -42,16 +42,16 @@ pkg_check_modules(FFMPEG REQUIRED libavformat libavcodec libswscale
 pkg_check_modules(LEPTONICA REQUIRED lept)
 pkg_check_modules(PNG REQUIRED libpng)
 pkg_check_modules(SSH2 REQUIRED libssh2)
+pkg_check_modules(CURL REQUIRED libcurl)
+pkg_check_modules(OPENSSL REQUIRED libcrypto libssl)
 else()
 find_package(OpenCV COMPONENTS core imgproc REQUIRED)
 find_package(OpenCV COMPONENTS dnn freetype imgcodecs highgui objdetect
        	                       video videoio xfeatures2d)
 endif()
 
-pkg_check_modules(CURL libcurl)
 pkg_check_modules(CUSTOMISATION customisation REQUIRED)
 pkg_check_modules(DARKNET darknet)
-pkg_check_modules(OPENSSL libcrypto libssl)
 pkg_check_modules(RS realsense2-gl)
 pkg_check_modules(TESSERACT tesseract)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -83,6 +83,50 @@ include(mk/cxx-code-quality-rules.cmake)
 #
 
 # Configure header files
+if(DARKNET_FOUND)
+	set(VPP_HAS_DARKNET_SUPPORT TRUE)
+endif()
+
+if(OPENCV_DNN_FOUND)
+	set(VPP_HAS_OPENCV_DNN_SUPPORT TRUE)
+endif()
+
+if(OPENCV_FREETYPE_FOUND)
+	set(VPP_HAS_EXTERNAL_FONT_SUPPORT TRUE)
+endif()
+
+if(OPENCV_HIGHGUI_FOUND)
+	set(VPP_HAS_OPENCV_GUI_SUPPORT TRUE)
+endif()
+
+if(OPENCV_IMGCODECS_FOUND)
+	set(VPP_HAS_IMAGE_CODEC_SUPPORT TRUE)
+endif()
+
+if(OPENCV_OBJDETECT_FOUND)
+	set(VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT TRUE)
+endif()
+
+if(OPENCV_VIDEO_FOUND)
+	set(VPP_HAS_TRACKING_SUPPORT TRUE)
+endif()
+
+if(OPENCV_VIDEOIO_FOUND)
+	set(VPP_HAS_OPENCV_VIDEO_IO_SUPPORT TRUE)
+endif()
+
+if(OPENCV_XFEATURES2D_FOUND OR OPENCV_FEATURES2D_FOUND)
+	set(VPP_HAS_FEATURE_DETECTION_SUPPORT TRUE)
+endif()
+
+if(RS_FOUND)
+	set(VPP_HAS_REALSENSE_CAPTURE_SUPPORT TRUE)
+endif()
+
+if(TESSERACT_FOUND)
+	set(VPP_HAS_TESSERACT_SUPPORT TRUE)
+endif()
+
 configure_file (${PROJECT_SOURCE_DIR}/tpl/config.hpp.in
 	        ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp @ONLY)
 
@@ -99,19 +143,13 @@ add_definitions(-DLOGTAG="VPP")
 set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/dataset.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/engine.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/ocv.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/dnn/setup.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/blur.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/bridge.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/capture.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/clustering.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/classifier/ocv.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/detector/darknet.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/detector/ocv.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/edging.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/mser.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/tesseract.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/log.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/logo.cpp
@@ -123,32 +161,54 @@ set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/dnn.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/input.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/edging.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/mser.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/reader.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/blur.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/clustering.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/edging.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/task/mser.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/tracker.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/ui/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/image.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/input.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/opencv_capture.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/realsense.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/functions.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/task.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/utf8.cpp)
 
 # Add specific files depending on available libraries
-if(OPENCV_FREETYPE_FOUND)
+if(VPP_HAS_DARKNET_SUPPORT)
+	set(LIB_FILES ${LIB_FILES}
+	       	      ${PROJECT_SOURCE_DIR}/src/vpp/engine/detector/darknet.cpp)
 endif()
 
-if(OPENCV_IMGPROC_FOUND)
+if(VPP_HAS_OPENCV_DNN_SUPPORT)
 	set(LIB_FILES ${LIB_FILES}
-	    	       ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/overlay.cpp)
-	    
+	       	      ${PROJECT_SOURCE_DIR}/src/vpp/dnn/ocv.cpp
+	       	      ${PROJECT_SOURCE_DIR}/src/vpp/engine/classifier/ocv.cpp
+	       	      ${PROJECT_SOURCE_DIR}/src/vpp/engine/detector/ocv.cpp) 
+endif()
+
+if(VPP_HAS_OPENCV_VIDEO_IO_SUPPORT)
+	set(LIB_FILES ${LIB_FILES}
+	       	      ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/capture.cpp)
+endif()
+
+if(VPP_HAS_FEATURE_DETECTION_SUPPORT)
+	set(LIB_FILES ${LIB_FILES}
+	              ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/mser.cpp
+	              ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/mser.cpp
+	              ${PROJECT_SOURCE_DIR}/src/vpp/task/mser.cpp)
+endif()
+
+if(VPP_HAS_REALSENSE_CAPTURE_SUPPORT)
+	set(LIB_FILES ${LIB_FILES}
+	              ${PROJECT_SOURCE_DIR}/src/vpp/util/io/realsense.cpp)
+endif()
+
+if(VPP_HAS_TESSERACT_SUPPORT)
+	set(LIB_FILES ${LIB_FILES}
+	              ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/tesseract.cpp)
 endif()
 
 if(ANDROID)
@@ -199,8 +259,7 @@ else()
 # Building the VPP shared (dynamic) library
 add_library(vpp SHARED ${LIB_FILES})
 target_link_libraries(vpp ${OpenCV_LIBRARIES} ${CUSTOMISATION_STATIC_LDFLAGS}
-		      ${OPENSSL_LDFLAGS} ${Readline_LIBRARY}
-		      ${TESSERACT_LDFLAGS} ${RS_LDFLAGS} ${CURL_LDFLAGS}
+		      ${TESSERACT_LDFLAGS} ${RS_LDFLAGS} 
 		      ${DARKNET_LDFLAGS} Threads::Threads)
 
 # Installing the VPP shared library

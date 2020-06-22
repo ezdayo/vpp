@@ -15,6 +15,7 @@
  **/
 
 #include "dscribe/pipeline.hpp"
+#include "vpp/dnn/dataset.hpp"
 
 /* Macro for exposing and naming a sub-entity */
 #define USES(x) expose(x.denominate(#x))

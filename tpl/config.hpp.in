@@ -22,39 +22,36 @@
 #define DSCRIBE_VERSION_MINOR @VERSION_MINOR@
 #define DSCRIBE_VERSION_PATCH @VERSION_PATCH@
 
-/* Flag set if the Curl library is available */
-#cmakedefine CURL_FOUND
+/* Flag set if the VPP supports the genuine Darknet DNN */
+#cmakedefine VPP_HAS_DARKNET_SUPPORT
 
-/* Flag set if the Darknet library is available */
-#cmakedefine DARKNET_FOUND
+/* Flag set if the VPP supports external fonts */
+#cmakedefine VPP_HAS_EXTERNAL_FONT_SUPPORT
 
-/* Flag set if the OpenCV DNN library is available */
-#cmakedefine OPENCV_DNN_FOUND
-
-/* Flag set if the OpenCV Freetype library is available */
-#cmakedefine OPENCV_FREETYPE_FOUND
+/* Flag set if the VPP supports OpenCV feature detection */
+#cmakedefine VPP_HAS_FEATURE_DETECTION_SUPPORT
 
 /* Flag set if the OpenCV Image Codecs library is available */
-#cmakedefine OPENCV_IMGCODECS_FOUND
+#cmakedefine VPP_HAS_IMAGE_CODEC_SUPPORT
 
-/* Flag set if the OpenCV High GUI library is available */
-#cmakedefine OPENCV_HIGHGUI_FOUND
+/* Flag set if the VPP supports the OpenCV DNN */
+#cmakedefine VPP_HAS_OPENCV_DNN_SUPPORT
 
-/* Flag set if the OpenCV Object Detection library is available */
-#cmakedefine OPENCV_OBJDETECT_FOUND
+/* Flag set if the VPP supports OpenCV GUI */
+#cmakedefine VPP_HAS_OPENCV_GUI_SUPPORT
 
-/* Flag set if the OpenCV Video library is available */
-#cmakedefine OPENCV_VIDEO_FOUND
+/* Flag set if the VPP supports OpenCV video I/O */
+#cmakedefine VPP_HAS_OPENCV_VIDEO_IO_SUPPORT
 
-/* Flag set if the OpenCV Video I/O library is available */
-#cmakedefine OPENCV_VIDEOIO_FOUND
+/* Flag set if the VPP supports the Realsense capture device */
+#cmakedefine VPP_HAS_REALSENSE_CAPTURE_SUPPORT
 
-/* Flag set if the OpenSSL library is available */
-#cmakedefine OPENSSL_FOUND
+/* Flag set if the VPP supports the similarity clustering */
+#cmakedefine VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
 
-/* Flag set if the Realsense library is available */
-#cmakedefine RS_FOUND
+/* Flag set if the VPP supports the TESSERACT OCR */
+#cmakedefine VPP_HAS_TESSERACT_SUPPORT
 
-/* Flag set if the TESSERACT OCR library is available */
-#cmakedefine TESSERACT_FOUND
+/* Flag set if the VPP has object tracking support */
+#cmakedefine VPP_HAS_TRACKING_SUPPORT
 

@@ -22,8 +22,10 @@ namespace VPP {
 namespace Stage {
 namespace OCR {
 
-Reader::Reader() noexcept : ForZone(true), tesseract() {
+Reader::Reader() noexcept : ForZone(true) {
+#ifdef VPP_HAS_TESSERACT_SUPPORT
     use("tesseract", tesseract);
+#endif
     filter = ([](const Scene &, const Zone &z) noexcept { 
                         return VPP::DNN::Dataset::isText(z); });
 }

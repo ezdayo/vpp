@@ -19,9 +19,15 @@
 
 #pragma once
 
-#include "vpp/engine/classifier/ocv.hpp"
+#include "vpp/config.hpp"
+
+#ifdef VPP_HAS_DARKNET_SUPPORT
 #include "vpp/engine/detector/darknet.hpp"
+#endif
+#ifdef VPP_HAS_OPENCV_DNN_SUPPORT
+#include "vpp/engine/classifier/ocv.hpp"
 #include "vpp/engine/detector/ocv.hpp"
+#endif
 #include "vpp/stage.hpp"
 
 namespace VPP {
@@ -33,8 +39,12 @@ class Detector : public Stage::ForScene {
         Detector() noexcept;
         ~Detector() noexcept = default;
 
+#ifdef VPP_HAS_DARKNET_SUPPORT
         VPP::Engine::Detector::Darknet darknet;
+#endif
+#ifdef VPP_HAS_OPENCV_DNN_SUPPORT
         VPP::Engine::Detector::OCV     ocv;
+#endif
 };
 
 class Classifier : public Stage::ForZone {
@@ -42,7 +52,9 @@ class Classifier : public Stage::ForZone {
         Classifier() noexcept;
         ~Classifier() noexcept = default;
 
+#ifdef VPP_HAS_OPENCV_DNN_SUPPORT
         VPP::Engine::Classifier::OCV ocv;
+#endif
 };
 
 }  // namespace DNN

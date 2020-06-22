@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifndef VPP_HAS_FEATURE_DETECTION_SUPPORT
+# error ERROR: VPP does not support OpenCV feature detection!
+#endif
+
 #include <opencv2/features2d.hpp>
 #include <string>
 #include <vector>

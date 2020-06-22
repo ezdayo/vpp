@@ -20,9 +20,10 @@
 #include <string>
 #include <vector>
 
-#include "customisation/socket.hpp"
+#include "customisation.hpp"
 #include "vpp/util/io/input.hpp"
 
+#ifdef CUSTOMISATION_HAS_SOCKET
 namespace Util {
 namespace IO {
 
@@ -58,3 +59,4 @@ class Image : public Input {
 
 } // namespace IO
 } // namespace Util
+#endif

@@ -18,14 +18,19 @@
 
 #include <sstream>
 
+#include "vpp/config.hpp"
 #include "vpp/log.hpp"
 #include "vpp/engine/capture.hpp"
 #ifdef __ANDROID__
 #include "vpp/util/io/android_camera.hpp"
 #endif
 #include "vpp/util/io/image.hpp"
+#ifdef VPP_HAS_REALSENSE_CAPTURE_SUPPORT
 #include "vpp/util/io/realsense.hpp"
-#include "vpp/util/io/opencv_capture.hpp"
+#endif
+#ifdef VPP_HAS_OPENCV_VIDEO_IO_SUPPORT
+#include "vpp/util/ocv/capture.hpp"
+#endif
 
 namespace VPP {
 namespace Engine {
@@ -53,12 +58,18 @@ Capture::Capture() noexcept : sources(), current(nullptr), next(nullptr) {
     sources.emplace_back(std::unique_ptr<Util::IO::Input>(std::move(new 
                                                 Util::IO::AndroidCamera())));
 #endif
+#ifdef VPP_HAS_REALSENSE_CAPTURE_SUPPORT
     sources.emplace_back(std::unique_ptr<Util::IO::Input>(std::move(new 
                                                     Util::IO::Realsense())));
+#endif
+#ifdef CUSTOMISATION_HAS_SOCKET
     sources.emplace_back(std::unique_ptr<Util::IO::Input>(std::move(new 
                                                     Util::IO::Image())));
+#endif
+#ifdef VPP_HAS_OPENCV_VIDEO_IO_SUPPORT
     sources.emplace_back(std::unique_ptr<Util::IO::Input>(std::move(new 
-                                                    Util::IO::OCVCapture())));
+                                                    Util::OCV::Capture())));
+#endif
 
     /* Define the protocol parameter */
     protocol.denominate("protocol")

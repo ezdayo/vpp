@@ -18,7 +18,10 @@
  **/
 
 #include <climits>
+#include "vpp/config.hpp"
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
 #include <opencv2/objdetect.hpp>
+#endif
 
 #include "vpp/log.hpp"
 #include "vpp/task/clustering.hpp"
@@ -108,6 +111,7 @@ Error::Type DilateAndJoin::process(Scene &scn) noexcept {
     return Error::OK;
 }
 
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
 Similarity::Similarity(const int mode) noexcept 
     : ForScene(mode), filter([](const Zone &){ return true; }) {
     threshold.denominate("threshold")
@@ -178,6 +182,7 @@ Error::Type Similarity::process(Scene &scn) noexcept {
 
     return Error::OK;
 }
+#endif
 
 }  // namespace Clustering
 }  // namespace Task

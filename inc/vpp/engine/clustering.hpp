@@ -33,7 +33,9 @@ class Clustering : public Engine::ForScene {
         Error::Type process(Scene &scene) noexcept override;
 
         Task::Clustering::DilateAndJoin dnj;
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
         Task::Clustering::Similarity    similarity;
+#endif
 };
 
 }  // namespace Engine

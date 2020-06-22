@@ -18,7 +18,10 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifdef VPP_HAS_TESSERACT_SUPPORT
 #include "vpp/engine/ocr/tesseract.hpp"
+#endif
 #include "vpp/stage.hpp"
 
 namespace VPP {
@@ -30,7 +33,9 @@ class Reader : public Stage::ForZone  {
         Reader() noexcept;
         ~Reader() noexcept = default;
 
+#ifdef VPP_HAS_TESSERACT_SUPPORT
         VPP::Engine::OCR::Tesseract tesseract;
+#endif
 };
 
 }  // namespace OCR

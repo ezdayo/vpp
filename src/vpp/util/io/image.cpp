@@ -19,6 +19,7 @@
 #include "vpp/log.hpp"
 #include "vpp/util/io/image.hpp"
 
+#ifdef CUSTOMISATION_HAS_SOCKET
 namespace Util {
 namespace IO {
 
@@ -81,3 +82,4 @@ int Image::close() noexcept {
 
 } // namespace IO
 } // namespace Util
+#endif

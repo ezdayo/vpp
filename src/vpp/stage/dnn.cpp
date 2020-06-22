@@ -21,13 +21,19 @@ namespace VPP {
 namespace Stage {
 namespace DNN {
 
-Detector::Detector() noexcept : ForScene(true), darknet(), ocv() {
+Detector::Detector() noexcept : ForScene(true) {
+#ifdef VPP_HAS_OPENCV_DNN_SUPPORT
     use("ocv", ocv);
+#endif
+#ifdef VPP_HAS_DARKNET_SUPPORT
     use("darknet", darknet);
+#endif
 }
 
-Classifier::Classifier() noexcept : ForZone(true), ocv() {
+Classifier::Classifier() noexcept : ForZone(true) {
+#ifdef VPP_HAS_OPENCV_DNN_SUPPORT
     use("ocv", ocv);
+#endif
     filter = ([](const Scene &, const Zone &z) noexcept { 
                         return !VPP::DNN::Dataset::isText(z); });
 }

@@ -1,6 +1,6 @@
 /**
  *
- * @file      vpp/util/io/opencv_capture.cpp
+ * @file      vpp/util/ocv/capture.cpp
  *
  * @brief     This is the OpenCV Capture Input class definition
  *
@@ -15,20 +15,20 @@
  **/
 
 #include "vpp/log.hpp"
-#include "vpp/util/io/opencv_capture.hpp"
+#include "vpp/util/ocv/capture.hpp"
 
 namespace Util {
-namespace IO {
+namespace OCV {
         
-OCVCapture::OCVCapture() noexcept 
-    : Input({ "ocv/file", "ocv/http", "ocv/https", "ocv/internal",
-              "ocv/rtsp", "ocv/videoio"}), cap() {}
+Capture::Capture() noexcept 
+    : Util::IO::Input({ "ocv/file", "ocv/http", "ocv/https", "ocv/internal",
+                        "ocv/rtsp", "ocv/videoio"}), cap() {}
 
-OCVCapture::~OCVCapture() noexcept = default;
+Capture::~Capture() noexcept = default;
         
-int OCVCapture::open(const std::string &protocol, int id) noexcept {
+int Capture::open(const std::string &protocol, int id) noexcept {
     ASSERT((protocol == "ocv/internal"),
-           "OCVCapture::open(): Unsupported protocol '%s'", protocol.c_str());
+           "Capture::open(): Unsupported protocol '%s'", protocol.c_str());
  
     if (protocol == "ocv/internal") {
         return open(id);
@@ -37,7 +37,7 @@ int OCVCapture::open(const std::string &protocol, int id) noexcept {
     }
 }
 
-int OCVCapture::open(int id) noexcept {
+int Capture::open(int id) noexcept {
     if (cap.open(id)) {
         return 0;
     } else {
@@ -45,9 +45,9 @@ int OCVCapture::open(int id) noexcept {
     }
 }
 
-int OCVCapture::open(const std::string &protocol,
+int Capture::open(const std::string &protocol,
                      const std::string &source) noexcept {
-    ASSERT(supports(protocol), "OCVCapture::open(): Unsupported protocol '%s'", 
+    ASSERT(supports(protocol), "Capture::open(): Unsupported protocol '%s'", 
            protocol.c_str());
     
     if ( (!source.empty()) && (protocol == "ocv/internal") &&
@@ -68,7 +68,7 @@ int OCVCapture::open(const std::string &protocol,
     }
 }
 
-int OCVCapture::open(const std::string &url) noexcept {
+int Capture::open(const std::string &url) noexcept {
     if (cap.open(url)) {
         return 0;
     } else {
@@ -76,13 +76,13 @@ int OCVCapture::open(const std::string &url) noexcept {
     }
 }
 
-int OCVCapture::setup(const std::string &/*username*/,
+int Capture::setup(const std::string &/*username*/,
                       const std::string &/*password*/) noexcept {
     /* Nothing to do, we are fine */
     return 0;
 }
 
-int OCVCapture::setup(int &width, int &height, int &rotation) noexcept {
+int Capture::setup(int &width, int &height, int &rotation) noexcept {
     if (! cap.isOpened()) {
         return -1;
     }
@@ -97,7 +97,7 @@ int OCVCapture::setup(int &width, int &height, int &rotation) noexcept {
     return 0;
 }
 
-int OCVCapture::read(cv::Mat &image) noexcept {
+int Capture::read(cv::Mat &image) noexcept {
     if (! cap.isOpened()) {
         return -1;
     }
@@ -107,7 +107,7 @@ int OCVCapture::read(cv::Mat &image) noexcept {
     return 0;
 }
 
-int OCVCapture::close() noexcept {
+int Capture::close() noexcept {
     if (cap.isOpened()) {
         cap.release();
     }
@@ -115,5 +115,5 @@ int OCVCapture::close() noexcept {
     return 0;
 }
 
-} // namespace IO
+} // namespace OCV
 } // namespace Util

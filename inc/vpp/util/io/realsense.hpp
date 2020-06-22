@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifndef VPP_HAS_REALSENSE_CAPTURE_SUPPORT
+# error ERROR: VPP does not support the Realsense capture device!
+#endif
+
 #include <librealsense2/rs.hpp>
 
 #include "vpp/util/io/input.hpp"

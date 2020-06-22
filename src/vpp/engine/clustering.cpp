@@ -21,13 +21,18 @@ namespace VPP {
 namespace Engine {
 
 Clustering::Clustering() noexcept
-    : dnj(Util::Task::Mode::Sync),
-      similarity(Util::Task::Mode::Sync) {
+    : dnj(Util::Task::Mode::Sync)
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
+      , similarity(Util::Task::Mode::Sync)
+#endif
+      {
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
     similarity.denominate("similarity");
     expose(similarity);
 
     similarity.filter = ([](const Zone &){ return false; });
     similarity.threshold = 1.0f;
+#endif
 
     dnj.denominate("dnj");
     expose(dnj);
@@ -38,15 +43,18 @@ Clustering::Clustering() noexcept
 }
 
 Error::Type Clustering::process(Scene &scene) noexcept {
-    auto e = similarity.start(scene);
-    if (e != Error::NONE) return e;
-    e = similarity.wait();
-    if (e != Error::NONE) return e;
-    e = dnj.start(scene);
-    if (e != Error::NONE) return e;
-    e = dnj.wait();
+#ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
+    auto err_sim = similarity.start(scene);
+    if (err_sim != Error::NONE) return err_sim;
+    err_sim = similarity.wait();
+    if (err_sim != Error::NONE) return err_sim;
+#endif
 
-    return e;
+    auto err_dnj = dnj.start(scene);
+    if (err_dnj != Error::NONE) return err_dnj;
+    err_dnj = dnj.wait();
+
+    return err_dnj;
 }
 
 }  // namespace Engine

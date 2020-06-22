@@ -16,10 +16,13 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+
 #include <algorithm>
 #include <opencv2/core/core.hpp>
+#ifdef VPP_HAS_TRACKING_SUPPORT
 #include <opencv2/video/tracking.hpp>
-
+#endif
 #include "vpp/log.hpp"
 #include "vpp/util/ocv/coordinates.hpp"
 
@@ -69,7 +72,11 @@ class Measure {
  *  meters a speed vector v=(v.x, v.y, v.z) a width and an height. It can be
  *  accessed either as a 8-float raw array, by name or as a matrix and a state
  *  can be predicted and tracked as a Kalman filter */
+#ifdef VPP_HAS_TRACKING_SUPPORT
 class State : public cv::KalmanFilter {
+#else
+class State {
+#endif
     public:
         static const int length = 8;
         static State DEFAULT;
@@ -79,21 +86,32 @@ class State : public cv::KalmanFilter {
 
         /* Internal values represented either as an array or a structure */
         Util::OCV::Triplet centre;
-        Util::OCV::Triplet speed;
         Util::OCV::Couple  size;
+#ifdef VPP_HAS_TRACKING_SUPPORT
+        Util::OCV::Triplet speed;
+#endif
 
         State &operator = (const Measure &measure) noexcept;
 
         bool valid() const noexcept {
+#ifdef VPP_HAS_TRACKING_SUPPORT
             return validity > 0;
+#else
+            return false;
+#endif
         }
 
         float accuracy() const noexcept {
+#ifdef VPP_HAS_TRACKING_SUPPORT
             return std::max(validity, 0.0f)/timeout;
+#else
+            return 0.0f;
+#endif
         }
 
         void predictability(float time) noexcept;
 
+#ifdef VPP_HAS_TRACKING_SUPPORT
         inline operator cv::Mat&() noexcept {
             return state;
         }
@@ -101,6 +119,7 @@ class State : public cv::KalmanFilter {
         inline operator const cv::Mat&() const noexcept {
             return state;
         }
+#endif
 
         inline operator Measure() const noexcept {
             Measure m;
@@ -119,10 +138,12 @@ class State : public cv::KalmanFilter {
         void predict(float dt) noexcept;
         void correct(const Measure &measure) noexcept;
 
+#ifdef VPP_HAS_TRACKING_SUPPORT
     private:
         cv::Mat state;
         float   validity;
         float   timeout;
+#endif
 };
 
 } // namespace Tracker

@@ -19,12 +19,12 @@
 
 #pragma once
 
-#ifndef OPENCV_HIGHGUI_FOUND
+#ifndef VPP_HAS_OPENCV_GUI_SUPPORT
 
 #define DISPLAY(tag, mat) ((void)0)
 #define SHOW(tag, scene) ((void)0)
 
-#else /* HIGH_GUI IS PRESENT */
+#else /* OPENCV GUI IS PRESENT */
 
 #include <opencv2/highgui.hpp>
 

@@ -20,6 +20,11 @@
 
 #pragma once
 
+#include "vpp/config.hpp"
+#ifndef VPP_HAS_OPENCV_DNN_SUPPORT
+# error ERROR: VPP does not support the OpenCV DNN!
+#endif
+
 #include <opencv2/dnn.hpp>
 
 #include "customisation/parameter.hpp"

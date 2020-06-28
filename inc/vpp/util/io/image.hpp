@@ -48,7 +48,7 @@ class Image : public Input {
         virtual int setup(int &width, int &height, int &rotation) 
             noexcept override;
 
-        virtual int read(cv::Mat &image) noexcept override;
+        virtual int read(cv::Mat &image, VPP::Image::Mode &m) noexcept override;
 
         virtual int close() noexcept override;
 

@@ -108,7 +108,7 @@ int Input::setup(int &width, int &height, int &rotation) noexcept {
     return -1;
 }
  
-int Input::read(cv::Mat & /*image*/) noexcept {
+int Input::read(cv::Mat & /*image*/, VPP::Image::Mode & /*mode*/) noexcept {
     LOGE("Input::read(cv::Mat &) not defined in child class");
     assert(false);
 
@@ -122,7 +122,7 @@ int Input::close() noexcept {
     return -1;
 }
 
-Util::OCV::ProjectionDelegate *Input::projection() const noexcept {
+VPP::Projecter *Input::projecter() const noexcept {
     return nullptr;
 }
 

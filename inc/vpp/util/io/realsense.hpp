@@ -54,11 +54,11 @@ public:
 
     virtual int setup(int &width, int &height, int &rotation) noexcept override;
 
-    virtual int read(cv::Mat &image) noexcept override;
+    virtual int read(cv::Mat &image, VPP::Image::Mode &m) noexcept override;
 
     virtual int close() noexcept override;
 
-    virtual Util::OCV::ProjectionDelegate *projection() const noexcept override;
+    virtual VPP::Projecter *projecter() const noexcept override;
 
 private:
     int   stream;

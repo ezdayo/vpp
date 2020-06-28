@@ -189,7 +189,7 @@ Error::Type Tesseract::process(Scene &scene, Zone &zone) noexcept {
             value_to_string().c_str(), name().c_str(),
             zone.width, zone.height, zone.x, zone.y);
 
-    const cv::Mat &input = scene.input();
+    const cv::Mat &input = scene.view.bgr().input();
     cv::Mat text = input(zone);
 
     tess.SetImage(text.data, text.cols, text.rows, 3, text.step);

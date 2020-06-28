@@ -27,7 +27,7 @@
 namespace Util {
 namespace IO {
 
-class Realsense::Core : public Util::OCV::ProjectionDelegate {
+class Realsense::Core : public VPP::ProjectionDelegate {
 public:
     Core(const char *device) noexcept;
     ~Core() noexcept;
@@ -40,12 +40,12 @@ public:
     std::vector<std::string> modes(rs2_stream id) noexcept;
     int use(rs2_stream id) noexcept; 
     int setup(rs2_stream id, int &width, int &height) noexcept;
-    int get(rs2_stream id, cv::Mat &image) noexcept;
+    int get(rs2_stream id, cv::Mat &image, VPP::Image::Mode &mode) noexcept;
     int release(rs2_stream id) noexcept;
 
     cv::Point project(const cv::Point3f &p) const noexcept override;
     cv::Point3f deproject(const cv::Point &p,
-                          uint16_t z) const noexcept override;
+                          float z) const noexcept override;
 
 private:
     void sync() noexcept;
@@ -61,7 +61,6 @@ private:
     std::unordered_map<int, unsigned long long> last_frame_id;
     std::unordered_map<int, unsigned long long> used_frame_id;
     rs2_intrinsics                              intrinsics;
-    float                                       depth_scale;
 };
 
 /*
@@ -133,9 +132,10 @@ static int stream_for(const std::string &protocol) {
  */
 
 Realsense::Core::Core(const char *device) noexcept
-    : Util::OCV::ProjectionDelegate(), serial(device), used(), configured(),
+    : VPP::Projecter(), serial(device), used(), configured(),
       cfg(), pipe(), running(), align_to_color(RS2_STREAM_COLOR), data(),
-      frame(), last_frame_id(), used_frame_id(), intrinsics(), depth_scale(0) {
+      frame(), last_frame_id(), used_frame_id(), intrinsics() {
+    zscale = 0.0;
     LOGD("Realsense::Core::Core(%s)", serial.c_str());
     cfg.enable_device(serial.c_str());
 }
@@ -210,11 +210,11 @@ int Realsense::Core::setup(rs2_stream id, int &width, int &height) noexcept {
     used_frame_id.emplace(id, 0);
 
     if (id == RS2_STREAM_DEPTH) {
-        depth_scale = running.get_device().first<rs2::depth_sensor>()
-                      .get_depth_scale();
+        zscale = running.get_device().first<rs2::depth_sensor>()
+                 .get_depth_scale();
         intrinsics = geom.get_intrinsics();
-        LOGD("Realsense::Core::setup(%s@%d): depth_scale = %f", 
-              serial.c_str(), id, depth_scale);
+        LOGD("Realsense::Core::setup(%s@%d): zscale = %f", 
+              serial.c_str(), id, zscale);
     }
     
     LOGD("Realsense::Core::setup(%s@%d): %dx%d", serial.c_str(), id, 
@@ -223,7 +223,8 @@ int Realsense::Core::setup(rs2_stream id, int &width, int &height) noexcept {
     return Error::NONE;
 }
 
-int Realsense::Core::get(rs2_stream id, cv::Mat &image) noexcept {
+int Realsense::Core::get(rs2_stream id, cv::Mat &image,
+                         VPP::Image::Mode &mode) noexcept {
     if (!configured[id]) {
         return Error::INVALID_REQUEST;
     }
@@ -269,6 +270,8 @@ int Realsense::Core::get(rs2_stream id, cv::Mat &image) noexcept {
     image = std::move(cv::Mat(cv::Size(w, h), 
                               (id == RS2_STREAM_COLOR) ? CV_8UC3 : CV_16UC1,
                               (void*)frame[id].get_data(), cv::Mat::AUTO_STEP));
+    mode = (id == RS2_STREAM_COLOR) ? 
+                            VPP::Image::Mode::BGR : VPP::Image::Mode::DEPTH16;
     used_frame_id[id] = last_frame_id[id];
 
     return Error::NONE; 
@@ -314,7 +317,7 @@ int Realsense::Core::release(rs2_stream id) noexcept {
 
 cv::Point Realsense::Core::project(const cv::Point3f &p) const noexcept {
     /* If no projection is in use then do none! */
-    if (depth_scale == 0) {
+    if (zscale == 0) {
         return cv::Point(p.x, p.y);
     }
 
@@ -351,9 +354,9 @@ cv::Point Realsense::Core::project(const cv::Point3f &p) const noexcept {
 }
 
 cv::Point3f Realsense::Core::deproject(const cv::Point &p, 
-                                       uint16_t z) const noexcept {
+                                       float z) const noexcept {
     /* If no projection is in use then do none! */
-    if (depth_scale == 0) {
+    if (zscale == 0) {
         return cv::Point3f(p.x, p.y, 0);
     }
 
@@ -367,7 +370,6 @@ cv::Point3f Realsense::Core::deproject(const cv::Point &p,
 
     float x  = (p.x - intrinsics.ppx) / intrinsics.fx;
     float y  = (p.y - intrinsics.ppy) / intrinsics.fy;
-    float uz = depth_scale*z;
     if(intrinsics.model == RS2_DISTORTION_INVERSE_BROWN_CONRADY)
     {
         float r2  = x*x + y*y;
@@ -381,7 +383,7 @@ cv::Point3f Realsense::Core::deproject(const cv::Point &p,
         y = uy;
     }
 
-    return cv::Point3f(uz*x, uz*y, uz);
+    return cv::Point3f(z*x, z*y, z);
 }
 
 /*
@@ -475,9 +477,9 @@ int Realsense::setup(int &width, int &height, int &rotation) noexcept {
     return Error::INVALID_REQUEST;
 }
 
-int Realsense::read(cv::Mat &image) noexcept {
+int Realsense::read(cv::Mat &image, VPP::Image::Mode &mode) noexcept {
     if (core != nullptr) {
-        return core->get(static_cast<rs2_stream>(stream), image);
+        return core->get(static_cast<rs2_stream>(stream), image, mode);
     }
 
     /* Cannot close a non-opened device */
@@ -496,7 +498,7 @@ int Realsense::close() noexcept {
     return Error::INVALID_REQUEST;
 }
 
-Util::OCV::ProjectionDelegate *Realsense::projection() const noexcept {
+VPP::Projecter *Realsense::projecter() const noexcept {
     return core;
 }
 

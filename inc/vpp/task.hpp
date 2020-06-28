@@ -40,7 +40,7 @@ using ForZones = Core::Task<Zones>;
 
 namespace Tasks {
 
-/* Describing parallel tasks for each zones of a scene */
+/* Describing parallel tasks for each zone of a scene */
 class ForScene : public Core::Tasks<Zone> {
     public:
 

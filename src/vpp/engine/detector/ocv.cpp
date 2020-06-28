@@ -62,7 +62,7 @@ Customisation::Error OCV::setup() noexcept {
 Error::Type OCV::process(Scene &scene) noexcept {
     cv::Mat              blob;
     std::vector<cv::Mat> outputs;
-    const cv::Mat &      input = scene.input();
+    const cv::Mat &      input = scene.view.bgr().input();
 
     // Create the 4D blob corresponding to the input image without cropping it 
     cv::dnn::blobFromImage(input, blob, scale, static_cast<cv::Size>(size), 

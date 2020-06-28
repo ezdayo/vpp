@@ -127,7 +127,7 @@ public:
     int setup(Mode mode) noexcept;
     int setup(Mode mode, int screenOrientation) noexcept;
 
-    virtual int read(cv::Mat &image) noexcept override;
+    virtual int read(cv::Mat &image, VPP::Image::Mode &mode) noexcept override;
 
     const Sensor &sensor() const noexcept;
     const Mode &mode() const noexcept;

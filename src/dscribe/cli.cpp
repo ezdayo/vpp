@@ -40,7 +40,8 @@ static void onScene(const Scene &scn, int error) {
         LOGE("OOOPS! Error %d on scene '%08lx'! This shall never happen...",
              error, scn.timestamp());
     } else {
-        cv::imshow("detection", scn.output());
+        cv::imshow("detection", 
+                   scn.view.cached(VPP::Image::Mode::BGR)->output());
         cv::waitKey(1);
     }
 }
@@ -52,7 +53,8 @@ static void onZone(DScribe::Core &dscribe,
              error, z.description.c_str());
     } else {
         if (dscribe.classification.input.bridge.empty()) {
-            cv::imshow("classification", scn.output());
+            cv::imshow("classification",
+                       scn.view.cached(VPP::Image::Mode::BGR)->output());
             cv::waitKey(1);
         }
     }
@@ -136,7 +138,7 @@ int main(int argc, char **argv) {
                 dscribe.detection.unfreeze();
             }
         };
-
+    
     dscribe.detection.broadcast.connect(onScene);
     dscribe.classification.broadcast.connect([&dscribe](const Scene &scn,
                                                         const Zone &z, 

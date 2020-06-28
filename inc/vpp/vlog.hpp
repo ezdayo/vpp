@@ -34,6 +34,6 @@
     cv::waitKey(1); \
 }
 
-#define SHOW(tag, scene) DISPLAY(tag, scene.output())
+#define SHOW(tag, scene) DISPLAY(tag, scene.view.bgr().output())
 
 #endif

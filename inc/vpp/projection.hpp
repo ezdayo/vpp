@@ -1,8 +1,8 @@
 /**
  *
- * @file      vpp/util/ocv/projection.hpp
+ * @file      vpp/projection.hpp
  *
- * @brief     This is a 3D to 2D (and vice-versa) projection delegate definition
+ * @brief     This is a 3D to 2D (and vice-versa) projection definition
  *
  *            This file is part of the VPP framework (see link).
  *
@@ -18,18 +18,19 @@
 
 #include <opencv2/core/core.hpp>
 
-namespace Util {
-namespace OCV {
+namespace VPP {
 
-class ProjectionDelegate {
+class Projecter {
     public:
-        ProjectionDelegate() noexcept = default;
-        virtual ~ProjectionDelegate() noexcept = default;
+        Projecter() noexcept = default;
+        virtual ~Projecter() noexcept = default;
 
         virtual cv::Point project(const cv::Point3f &p) const noexcept = 0;
         virtual cv::Point3f deproject(const cv::Point &p,
-                                      uint16_t z) const noexcept = 0;
+                                      float z) const noexcept = 0;
+        float   zscale;
 };
 
-}  // namespace OCV
-}  // namespace Util
+using ProjectionDelegate = Projecter;
+
+}  // namespace VPP

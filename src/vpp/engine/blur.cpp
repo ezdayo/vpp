@@ -38,7 +38,7 @@ Skipping::Skipping() noexcept : task(Tasks::Tiled::Mode::Async*8) {
 }
 
 Error::Type Skipping::process(Scene &scene) noexcept {
-    cv::Rect frame(scene.frame());
+    cv::Rect frame(scene.view.frame());
     task.start(scene, frame);
     auto e = task.wait();
 

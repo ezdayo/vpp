@@ -723,7 +723,7 @@ void AndroidCamera::unsetup() noexcept
     LOGD("AndroidCamera::unsetup(): Unsetup done");
 }
 
-int AndroidCamera::read(cv::Mat &image) noexcept
+int AndroidCamera::read(cv::Mat &image, VPP::Image::Mode &mode) noexcept
 {
     // Use a default session if none exists so far...
     if (captureSession == nullptr)
@@ -795,6 +795,8 @@ int AndroidCamera::read(cv::Mat &image) noexcept
         cv::Mat orig(std::move(image));
         cv::rotate(orig, image, rotation);
     }
+
+    mode = VPP::Image::Mode::BGR;
 
     return ACAMERA_OK;
 }

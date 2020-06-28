@@ -82,6 +82,10 @@ include(mk/cxx-code-quality-rules.cmake)
 # Binary targets
 #
 
+if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
+    add_definitions(-DNDEBUG)
+endif()
+
 # Configure header files
 if(DARKNET_FOUND)
 	set(VPP_HAS_DARKNET_SUPPORT TRUE)
@@ -150,7 +154,10 @@ set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/capture.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/clustering.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/edging.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/history.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/none.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/engine/overlay.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/image.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/log.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/logo.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/pipeline.cpp
@@ -167,14 +174,16 @@ set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/blur.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/clustering.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/edging.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/tracker.cpp
+	       #${PROJECT_SOURCE_DIR}/src/vpp/tracker.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/ui/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/image.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/input.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/functions.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/ocv/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/task.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/util/utf8.cpp)
+	       ${PROJECT_SOURCE_DIR}/src/vpp/util/utf8.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/view.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/zone.cpp)
 
 # Add specific files depending on available libraries
 if(VPP_HAS_DARKNET_SUPPORT)
@@ -211,6 +220,14 @@ if(VPP_HAS_TESSERACT_SUPPORT)
 	              ${PROJECT_SOURCE_DIR}/src/vpp/engine/ocr/tesseract.cpp)
 endif()
 
+if(VPP_HAS_TRACKING_SUPPORT)
+	set(LIB_FILES ${LIB_FILES}
+	              ${PROJECT_SOURCE_DIR}/src/vpp/kernel/histogram.cpp
+	              ${PROJECT_SOURCE_DIR}/src/vpp/kernel/kalman.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/kalman.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/task/kernel/histogram.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/task/kernel/kalman.cpp)
+endif()
 if(ANDROID)
 	set(LIB_FILES ${LIB_FILES}
 	    ${PROJECT_SOURCE_DIR}/src/vpp/util/io/android_camera.cpp

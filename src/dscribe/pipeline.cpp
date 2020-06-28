@@ -22,12 +22,12 @@
 
 namespace DScribe {
 
-static void track_scene(const VPP::Scene &s, int error) noexcept {
+/*static void track_scene(const VPP::Scene &s, int error) noexcept {
     if (error == Error::NONE) {
         static VPP::Scene history;
         history = std::move(const_cast<VPP::Scene &>(s).update(history));
     }
-}
+}*/
 
 Core::Detection::Detection() noexcept
     : VPP::Pipeline::ForScene(), input(), depth(), blur(), detector(), 
@@ -43,8 +43,8 @@ Core::Detection::Detection() noexcept
 
     input.use("capture");
 
-    VPP::Tracker::State::DEFAULT.predictability(2);
-    detector.broadcast.connect(track_scene);
+    /*VPP::Tracker::State::DEFAULT.predictability(2);
+    detector.broadcast.connect(track_scene);*/
 
     /* Only cluster if there are text zone, and only cluster those text zones */
     clustering.filter = ([](const VPP::Scene &s) noexcept {

@@ -118,7 +118,7 @@ std::string Dataset::label(const Zone &zone, float threshold) const noexcept {
         }
     }
 
-    int cm = zone.tracked.centre.z *100;
+    int cm = zone.state.centre.z *100;
     if (cm > 0) {
         desc += " @ " + std::to_string(cm/100) + "." + 
                 std::to_string(cm%100) + "m";

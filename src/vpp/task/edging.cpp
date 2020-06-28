@@ -101,10 +101,11 @@ static bool is_nearly_squared(cv::Point pt1, cv::Point pt2, cv::Point pt0)
 
 Error::Type Edging::process(Scene &scene) noexcept {
 
+    auto &input = scene.view.bgr().input();
     /* Scale the input image to accelerate detection */
     int scale = static_cast<int>(input_scale);
     if (scale == 0) { // Automatic scaling arrange for an ~57600 pixel output
-        auto square_scale = scene.input().total()/57600.0f;
+        auto square_scale = input.total()/57600.0f;
         scale = static_cast<int>(std::round(std::sqrt(square_scale)));
     } else {          // Manual scaling
         scale = std::max(scale, 1);
@@ -112,9 +113,9 @@ Error::Type Edging::process(Scene &scene) noexcept {
     cv::Mat scaled;
 
     if (scale != 1) {
-        cv::resize(scene.input(), scaled, scene.input().size()/scale);
+        cv::resize(input, scaled, input.size()/scale);
     } else {
-        scaled = scene.input();
+        scaled = input;
     }
 
     /* Blur the scaled image */
@@ -162,7 +163,7 @@ Error::Type Edging::process(Scene &scene) noexcept {
         cv::line(edged, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]),
                  cv::Scalar(255), 1, cv::LINE_AA);
 #endif
-        cv::line(scene.drawable(), cv::Point(l[0], l[1])*scale,
+        cv::line(scene.view.bgr().drawable(), cv::Point(l[0], l[1])*scale,
                  cv::Point(l[2], l[3])*scale, cv::Scalar(0, 0 ,255), 3, 
                  cv::LINE_AA);
     }
@@ -197,7 +198,7 @@ Error::Type Edging::process(Scene &scene) noexcept {
                 {
                     const cv::Point* p = &approx[0];
                     int n = 4;
-                    cv::polylines(scene.drawable(), &p, &n, 1, true,
+                    cv::polylines(scene.view.bgr().drawable(), &p, &n, 1, true,
                                   cv::Scalar(0,255,0), 3, cv::LINE_AA);
                 }
     

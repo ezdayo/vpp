@@ -1,6 +1,6 @@
 /**
  *
- * @file      vpp/util/ocv/coordinates.hpp
+ * @file      vpp/coordinates.hpp
  *
  * @brief     This is a 3D and 2D coordinates utility function class
  *
@@ -20,13 +20,19 @@
 
 #include "vpp/log.hpp"
 
-namespace Util {
-namespace OCV {
+namespace VPP {
 
 /* Two-uplet class */
 class Couple {
     public:
         static const int length = 2;
+
+        inline Couple() noexcept = default;
+        inline ~Couple() noexcept = default;
+        inline Couple(const Couple& other) = default;
+        inline Couple(Couple&& other) = default;
+        inline Couple& operator=(const Couple& other) = default;
+        inline Couple& operator=(Couple&& other) = default;
 
         float x;
         float y;
@@ -81,9 +87,9 @@ class Couple {
             if (top == 0) {
                 return 0;
             }
-            auto bot = static_cast<float>((a & b).area());
+            auto bot = static_cast<float>((a | b).area());
 
-            return  top / bot;
+            return top / bot;
         }
 
         inline float square_dist(const Couple &other) const noexcept {
@@ -96,6 +102,13 @@ class Couple {
 class Triplet {
     public:
         static const int length = 3;
+
+        inline Triplet() noexcept = default;
+        inline ~Triplet() noexcept = default;
+        inline Triplet(const Triplet& other) = default;
+        inline Triplet(Triplet&& other) = default;
+        inline Triplet& operator=(const Triplet& other) = default;
+        inline Triplet& operator=(Triplet&& other) = default;
 
         float x;
         float y;
@@ -145,5 +158,4 @@ class Triplet {
         }
 };
 
-}  // namespace OCV
-}  // namespace Util
+}  // namespace VPP

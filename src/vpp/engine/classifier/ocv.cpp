@@ -29,7 +29,7 @@ OCV::~OCV() noexcept = default;
 Error::Type OCV::process(Scene &scene, Zone &zone) noexcept {
     cv::Mat  blob, area, output, predictions, indexes;
     cv::Mat  background(static_cast<cv::Size>(size), CV_8UC3, offset);
-    const cv::Mat &input = scene.input();
+    const cv::Mat &input = scene.view.bgr().input();
     cv::Size scaled;
     cv::Point at(0,0);
     int zonew = zone.width;

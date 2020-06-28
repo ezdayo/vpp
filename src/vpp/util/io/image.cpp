@@ -49,10 +49,10 @@ int Image::setup(const std::string &username,
 }
 
 int Image::setup(int &width, int &height, int &rotation) noexcept {
-    cv::Mat test;
+    cv::Mat          test;
+    VPP::Image::Mode mode;
 
-    auto error = read(test);
-    LOGE("SETUP IMAGE");
+    auto error = read(test, mode);
     if (error) {
         LOGE("SETUP IMAGE: error %d", error);
         return error;
@@ -65,12 +65,13 @@ int Image::setup(int &width, int &height, int &rotation) noexcept {
     return 0;
 }
 
-int Image::read(cv::Mat &image) noexcept {
+int Image::read(cv::Mat &image, VPP::Image::Mode &mode) noexcept {
     data.clear();
 
     auto error = socket.get(data);
     if (! error) {
         image = cv::imdecode(data, -1);
+        mode  = VPP::Image::Mode::BGR;
     }
 
     return error;

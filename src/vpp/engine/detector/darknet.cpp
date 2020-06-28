@@ -90,7 +90,7 @@ Customisation::Error Darknet::setup() noexcept {
 
 Error::Type Darknet::process(Scene &scene) noexcept {
     int            nboxes = 0;
-    const cv::Mat &input = scene.input();
+    const cv::Mat &input = scene.view.bgr().input();
 
     /* Prepare the input buffer if not ready or inappropriate */
     if ((input_w != input.cols) || (input_h != input.rows)) {

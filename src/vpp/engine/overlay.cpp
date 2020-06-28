@@ -62,11 +62,12 @@ template <typename ...Z> Core<Z...>::Core() noexcept
 template <typename ...Z> 
 Error::Type Core<Z...>::process(Scene &scene, Z&... /*z*/) noexcept {
     /* Draw the scene */
-    scene.flush();
-    overlay.draw(scene.drawable(), scene, *stylist);
+    auto &bgr = scene.view.bgr();
+    bgr.flush();
+    overlay.draw(bgr.drawable(), scene, *stylist);
 
     if ( (!logo.layer.empty()) && (logo.show) ) {
-        overlay.draw(scene.drawable(), logo.layer, logo.at);
+        overlay.draw(bgr.drawable(), logo.layer, logo.at);
     }
 
     return Error::NONE;

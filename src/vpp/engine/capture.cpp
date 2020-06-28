@@ -167,16 +167,18 @@ Customisation::Error Capture::setup() noexcept {
 }
 
 Error::Type Capture::process(Scene &orig) noexcept {
-    cv::Mat image;
     Error::Type error = Error::NOT_EXISTING;
 
     if (current != nullptr) {
-        error = current->read(image);
+        cv::Mat     image;
+        Image::Mode mode;
+        error = current->read(image, mode);
         if (! error) {
-            if (current->projection()) {
-                orig.use(std::move(image), *current->projection());
+            if ( (current->projecter() != nullptr) && (mode.is_depth()) ) {
+                orig.view.use(std::move(image), std::move(mode),
+                              *current->projecter());
             } else {
-                orig.use(std::move(image));
+                orig.view.use(std::move(image), std::move(mode));
             }
         }
     }

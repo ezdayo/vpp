@@ -38,7 +38,7 @@ template <typename ...Z> void Bridge<Z...>::forward(Scene scn) noexcept {
         wr = (wr+1)%2;
     }
 
-    scenes[wr] = std::move(scn); 
+    scenes[wr] = std::move(scn);
 }
 
 template <typename ...Z> void Bridge<Z...>::forward(Zones zs) noexcept {

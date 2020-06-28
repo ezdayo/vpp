@@ -97,11 +97,12 @@ int Capture::setup(int &width, int &height, int &rotation) noexcept {
     return 0;
 }
 
-int Capture::read(cv::Mat &image) noexcept {
+int Capture::read(cv::Mat &image, VPP::Image::Mode &mode) noexcept {
     if (! cap.isOpened()) {
         return -1;
     }
 
+    mode = VPP::Image::Mode::BGR;
     cap >> image;
 
     return 0;

@@ -21,7 +21,8 @@
 #include <string>
 #include <vector>
 
-#include "vpp/util/ocv/projection.hpp"
+#include "vpp/projection.hpp"
+#include "vpp/image.hpp"
 
 namespace Util {
 namespace IO {
@@ -51,11 +52,11 @@ class Input {
         
         virtual int setup(int &width, int &height, int &rotation) noexcept;
         
-        virtual int read(cv::Mat &image) noexcept;
+        virtual int read(cv::Mat &image, VPP::Image::Mode &m) noexcept;
 
         virtual int close() noexcept;
 
-        virtual Util::OCV::ProjectionDelegate *projection() const noexcept;
+        virtual VPP::Projecter *projecter() const noexcept;
 
     protected:
         std::set<std::string> valid;

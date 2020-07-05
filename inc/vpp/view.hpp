@@ -32,8 +32,7 @@
 namespace VPP {
 
 class View final {
-    public:
-        
+    public: 
         class Depth final {
             public:
                 Depth() noexcept : neighbourhood(), depth_map(nullptr), 

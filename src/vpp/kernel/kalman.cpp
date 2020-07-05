@@ -20,16 +20,20 @@
 
 namespace VPP {
 namespace Kernel {
+namespace Kalman {
 
-Kalman::Model::Model() noexcept
-    : cv::KalmanFilter(VPP::Zone::State::length, VPP::Zone::Measure::length,
-                       0, CV_32F), validity(0), timeout(10.0) {}
+Context::Context(Zone &zone, const Zone::Copier &copier,
+                 unsigned int sz, Parameters &params) noexcept
+    : VPP::Kernel::Context(zone, copier, sz), 
+      cv::KalmanFilter(Zone::State::length, Zone::Measure::length, 0, CV_32F),
+      validity(params.timeout), config(params) {
+          initialise();
+}
 
-Kalman::Model::Model(const Kalman::Model &other) noexcept
-    : cv::KalmanFilter(), validity(0), timeout(other.timeout) {
-#define KF_MATRIX_COPY(x) x = std::move(other.x.clone())
+void Context::initialise() noexcept {
+#define KF_MATRIX_COPY(x) x = std::move(config.x.clone())
     KF_MATRIX_COPY(statePre);
-    KF_MATRIX_COPY(statePost);
+    statePost = zone().state;
     KF_MATRIX_COPY(transitionMatrix);
     KF_MATRIX_COPY(controlMatrix);
     KF_MATRIX_COPY(measurementMatrix);
@@ -45,61 +49,44 @@ Kalman::Model::Model(const Kalman::Model &other) noexcept
     KF_MATRIX_COPY(temp5);
 }
 
-Kalman::Model::~Model() noexcept = default;
-
-bool Kalman::Model::predictability(float time) noexcept {
-    if (time > 0) {
-        timeout = time;
-        return true;
-    }
-    return false;
-}
-
-bool Kalman::Model::valid() const noexcept {
+bool Context::valid() const noexcept {
     return validity > 0;
 }
 
-float Kalman::Model::accuracy() const noexcept {
-    return std::max(validity, 0.0f)/timeout;
+float Context::accuracy() const noexcept {
+    return std::max(validity, 0.0f)/config.timeout;
 }
 
-void Kalman::Model::invalidate() noexcept {
+void Context::invalidate() noexcept {
     validity = 0;
 }
 
-
-void Kalman::Model::predict(float dt, VPP::Zone::State &state) noexcept {
-    if (valid()) {
+void Context::predict(const VPP::View &view, float dt) noexcept {
+    if (valid() && (original == nullptr)) {
         /* Set the time delta */
         transitionMatrix.at<float>(3)  = dt;
         transitionMatrix.at<float>(12) = dt;
         transitionMatrix.at<float>(21) = dt;
-
-        cv::KalmanFilter::predict().copyTo(static_cast<cv::Mat&>(state));
+    
+        /* Duplicate the previous zone and predict it !*/
+        auto z = stack(zone(-1));
+        cv::KalmanFilter::predict().copyTo(static_cast<cv::Mat&>(z.state));
+        z.project(view);
 
         validity -= dt;
     }
 }
 
-void Kalman::Model::correct(VPP::Zone::State &state) noexcept {
-    if (valid()) {
-        cv::KalmanFilter::correct(state);
-    } else {
-        errorCovPre.at<float>(0)  = 1;
-        errorCovPre.at<float>(9)  = 1; 
-        errorCovPre.at<float>(18) = 1;
-        errorCovPre.at<float>(27) = 1;
-        errorCovPre.at<float>(36) = 1;
-        errorCovPre.at<float>(45) = 1;
-        errorCovPre.at<float>(54) = 1;
-        errorCovPre.at<float>(63) = 1;
-
-        state = static_cast<VPP::Zone::Measure>(state);
-
-        statePost = state; 
-    }
-
-    validity = timeout;
+void Context::correct() noexcept {
+    if (zones.size() > 1) {
+        cv::KalmanFilter::correct(zone(-1).state);
+        zone().state = std::move(zone(-1).state);
+        static_cast<cv::Rect &>(zone()) = 
+                                    std::move(static_cast<cv::Rect>(zone(-1)));
+        zones.erase(zones.begin()+1, zones.end());
+    
+        validity = config.timeout;
+    } 
 }
 
 #define EXPOSE_MATRIX(M, L, D) \
@@ -108,8 +95,9 @@ void Kalman::Model::correct(VPP::Zone::State &state) noexcept {
         .characterise(Customisation::Trait::CONFIGURABLE);\
     Customisation::Entity::expose(M##L)
 
-Kalman::Kalman() noexcept 
-    : Customisation::Entity("Kernel"), predictability(10.0), tscale(1.0),
+Engine::Engine(const Zone::Copier &c, unsigned int sz) noexcept 
+    : VPP::Kernel::Engine<Engine, Context>(c, sz), predictability(10.0),
+      tscale(1.0),
       F0({   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0 }),
       F1({   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0 }),
       F2({   0.0,   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0 }),
@@ -136,7 +124,7 @@ Kalman::Kalman() noexcept
       R2({   0.0,   0.0,   0.1,   0.0,   0.0 }),
       R3({   0.0,   0.0,   0.0,   0.1,   0.0 }),
       R4({   0.0,   0.0,   0.0,   0.0,   0.1 }),
-      model(), tracked() {
+      model() {
 
     predictability.denominate("predictability")
                   .describe("The timeout after which a tracked object is no "
@@ -183,13 +171,11 @@ Kalman::Kalman() noexcept
     EXPOSE_MATRIX(R, 4, "measures noise covariance");
 }
         
-Kalman::~Kalman() noexcept = default;
-
 static Customisation::Error do_copy(std::vector<float> i, 
                                     cv::Mat &o, int r) noexcept {
     int sz = static_cast<int>(i.size());
     ASSERT((sz == o.cols) && (r >= 0) && (r < o.rows),
-            "Engine::Tracker::Kalman::setup(): "
+            "Kernel::Kalman::Engine::setup(): "
             "Cannot fit a %d row at row %d of a %x%d matrix",
             sz, r, o.cols, o.rows);
 
@@ -204,7 +190,7 @@ static Customisation::Error do_copy(std::vector<float> i,
     return Customisation::Error::NONE;
 }
 
-Customisation::Error Kalman::setup() noexcept {
+Customisation::Error Engine::setup() noexcept {
     Customisation::Error e;
 
     /* Update the model parametrisation with the current settings */
@@ -263,31 +249,30 @@ Customisation::Error Kalman::setup() noexcept {
     if (e != Customisation::Error::NONE) { return e; }
     e = do_copy(R4, model.measurementNoiseCov, 4);
     if (e != Customisation::Error::NONE) { return e; }
-    
-    tracked.clear();
+   
+    setIdentity(model.errorCovPost, cv::Scalar::all(1));
 
-    return e;
+    return clear(); 
 }
-        
-Customisation::Error Kalman::onPredictabilityUpdate(const float &t) noexcept {
-    if(model.predictability(t)) {
+    
+Customisation::Error Engine::clear() noexcept {
+    storage.clear();
+    return Customisation::Error::NONE;
+}
+
+Customisation::Error Engine::onPredictabilityUpdate(const float &t) noexcept {
+    if (t > 0) {
+        model.timeout = t;
         return Customisation::Error::NONE;
     } else {
         return Customisation::Error::INVALID_VALUE;
     }
 }
 
-Kalman::Model &Kalman::predictor(Zone &zone) noexcept {
-    auto key = zone.uuid;
-    auto it = tracked.find(key);
-
-    if (it == tracked.end()) {
-        auto p = tracked.emplace(key, model);
-        it = p.first;
-    }
-
-    return it->second;
+void Engine::prepare(const Zones &zs) noexcept {
+    Parent::prepare(zs, model);
 }
 
+}  // namespace Kalman
 }  // namespace Kernel
 }  // namespace VPP

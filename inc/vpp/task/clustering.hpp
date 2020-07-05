@@ -30,8 +30,13 @@ namespace VPP {
 namespace Task {
 namespace Clustering {
 
-class DilateAndJoin : public Task::ForScene {
+class DilateAndJoin : public VPP::Task::Single<DilateAndJoin, Scene&> {
     public:
+        using Parent = VPP::Task::Single<DilateAndJoin, Scene&>;
+        using typename Parent::Mode;
+        using Parent::start;
+        using Parent::wait;
+
         explicit DilateAndJoin(const int mode) noexcept;
         virtual ~DilateAndJoin() noexcept = default;
 
@@ -46,13 +51,17 @@ class DilateAndJoin : public Task::ForScene {
          * a standard dilatation is applied */
         PARAMETER(Direct, None, Immediate, bool) cross;
 
-    protected:
-        virtual Error::Type process(Scene &scn) noexcept override;
+        Error::Type process(Scene &scn) noexcept;
 };
 
 #ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
-class Similarity : public Task::ForScene {
+class Similarity : public VPP::Task::Single<Similarity, Scene&> {
     public:
+        using Parent = VPP::Task::Single<Similarity, Scene&>;
+        using typename Parent::Mode;
+        using Parent::start;
+        using Parent::wait;
+
         explicit Similarity(const int mode) noexcept;
         virtual ~Similarity() noexcept = default;
 
@@ -62,8 +71,7 @@ class Similarity : public Task::ForScene {
         /* Similarity threshold, the smaller the pickier it becomes */
         PARAMETER(Direct, None, Immediate, double) threshold;
 
-    protected:
-        virtual Error::Type process(Scene &scn) noexcept override;
+        Error::Type process(Scene &scn) noexcept;
 };
 #endif
 

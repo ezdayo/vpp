@@ -25,7 +25,7 @@ namespace VPP {
 namespace Task {
 namespace Blur {
 
-Skipping::Skipping(const int mode) noexcept : VPP::Tasks::Tiled(mode) {
+Skipping::Skipping(const int mode) noexcept : Parent(mode) {
     sharpness.denominate("sharpness")
              .describe("The minimum sharpness level to consider a tile as "
                        "not being blurred")
@@ -42,11 +42,11 @@ Skipping::Skipping(const int mode) noexcept : VPP::Tasks::Tiled(mode) {
 Error::Type Skipping::start(Scene &s, cv::Rect &frame) noexcept {
     tiles_valid = 0;
 
-    return VPP::Tasks::Tiled::start(s, frame);
+    return Parent::start(s, frame);
 }
 
 Error::Type Skipping::wait() noexcept {
-    auto error = VPP::Tasks::Tiled::wait();
+    auto error = Parent::wait();
 
     if (error < Error::OK) {
         return error;

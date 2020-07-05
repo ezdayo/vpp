@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "vpp/engine.hpp"
 
 namespace VPP {
@@ -26,14 +28,15 @@ namespace Tracker {
 
 class History : public VPP::Engine::ForScene {
     public:
-        explicit History(Scene &history) noexcept;
+        explicit History(Scene &history, std::mutex &synchro) noexcept;
         ~History() noexcept;
 
         Customisation::Error setup() noexcept override;
         Error::Type process(Scene &scene) noexcept override;
 
     private:
-        Scene &latest;
+        Scene      &latest;
+        std::mutex &update;
 };
 
 }  // namespace Tracker

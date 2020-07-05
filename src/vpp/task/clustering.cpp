@@ -32,7 +32,7 @@ namespace Task {
 namespace Clustering {
 
 DilateAndJoin::DilateAndJoin(const int mode) noexcept 
-    : ForScene(mode), filter([](const Zone &){ return true; }) {
+    : Parent(mode), filter([](const Zone &){ return true; }) {
     ratio.denominate("ratio")
          .describe("Dilatation ratio to apply prior to joining overlapping "
                    "zones. It is a dilatation when > 1 and a contraction when "
@@ -113,7 +113,7 @@ Error::Type DilateAndJoin::process(Scene &scn) noexcept {
 
 #ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
 Similarity::Similarity(const int mode) noexcept 
-    : ForScene(mode), filter([](const Zone &){ return true; }) {
+    : Parent(mode), filter([](const Zone &){ return true; }) {
     threshold.denominate("threshold")
              .describe("Threshold for the similarity clustering. The smaller "
                        "the threshold, the pickier the clustering is")

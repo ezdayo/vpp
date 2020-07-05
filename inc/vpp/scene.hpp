@@ -73,7 +73,7 @@ class Scene final {
 
         inline Zone &mark(cv::Rect_<float> bbox) noexcept {
             /* Relying on copy-elision for performance */
-            return mark(Zone(BBox(bbox, view.bgr().frame())));
+            return mark(Zone(BBox(bbox, view.frame())));
         }
 
         ConstZones zones() const noexcept;

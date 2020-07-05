@@ -28,9 +28,10 @@
 #include <opencv2/imgproc.hpp>
 #include <vector>
 
+#include "vpp/coordinates.hpp"
 #include "vpp/log.hpp"
 #include "vpp/prediction.hpp"
-#include "vpp/coordinates.hpp"
+#include "vpp/view.hpp"
 
 namespace VPP {
 
@@ -226,17 +227,16 @@ class Zone final : public BBox {
         };
 
         /* Universal unique identifier for a zone */
-        uint64_t uuid;
+        uint64_t                uuid;
 
         State                   state;
         Contour                 contour;
         std::vector<Prediction> predictions;
         Prediction              context;
         std::string             description;
-        int                     marked;
+        int                     tag;
 
-        Zone() noexcept : BBox(), state(), contour(), predictions(), context(),
-                          description(), marked(0) {}
+        Zone() noexcept = default;
 
         ~Zone() noexcept = default;
 
@@ -246,27 +246,54 @@ class Zone final : public BBox {
         Zone& operator=(const Zone& other) = default;
         Zone& operator=(Zone&& other) = default;
 
+        /* Predictiions management */
+        Zone &predict(Prediction pred) noexcept;
+        Zone &predict(std::vector<Prediction> preds) noexcept;
+
+        /* A handful of specific dedicated constructors */
         Zone(BBox bbox) noexcept : BBox(std::move(bbox)), state(), contour(), 
                                    predictions(), context(), description(),
-                                   marked(0) {}
+                                   tag(0) {}
    
         Zone(BBox bbox, Prediction pred) noexcept
             : BBox(std::move(bbox)), state(), contour(), predictions({ pred }),
-              context(std::move(pred)), description(), marked(0) {}
+              context(std::move(pred)), description(), tag(0) {}
 
-        Zone(BBox bbox, std::vector<Prediction> preds) noexcept;
+        Zone(BBox bbox, std::vector<Prediction> preds) noexcept
+            : BBox(std::move(bbox)), state(), contour(), description(), 
+            tag(0) {
+            predict(std::move(preds));
+        }
 
         Zone(BBox bbox, Contour c) noexcept 
                 : BBox(std::move(bbox)), state(), contour(std::move(c)),
-                  predictions(), context(), description(), marked(0) {}
+                  predictions(), context(), description(), tag(0) {}
 
         Zone(Contour c) noexcept
                 : BBox(std::move(cv::boundingRect(c))), state(),
                   contour(std::move(c)), predictions(), context(),
-                  description(), marked(0) {}
+                  description(), tag(0) {}
 
-        Zone &predict(Prediction pred) noexcept;
-        Zone &predict(std::vector<Prediction> preds) noexcept;
+        void project(const View &view) noexcept;
+        void deproject(const View &view) noexcept;
+
+        using Copier = 
+            std::function<void (Zone& out, const Zone &in) noexcept>;
+        
+        class Copy {
+            public:
+                static void BBoxOnly(Zone &/*o*/, const Zone &/*i*/) noexcept {}
+                static void UUID(Zone& out, const Zone &in) noexcept;
+                static void Geometries(Zone& out, const Zone &in) noexcept;
+                static void All(Zone& out, const Zone &in) noexcept;
+        };
+
+        Zone copy(const Copier &copier = Copy::BBoxOnly) const noexcept {
+            Zone out(static_cast<cv::Rect>(*this));
+            copier(out, *this);
+            /* Relying on copy-elision here */
+            return out;
+        }
 
         Zone &update(Zone &older) noexcept;
 
@@ -274,15 +301,23 @@ class Zone final : public BBox {
         static Zone merge(const Zones &zones) noexcept;
        
         inline void invalidate() noexcept {
-            marked = 0;
+            tag = -1;
+        }
+
+        inline int tagged() const noexcept {
+            if (tag > 0) {
+                return tag;
+            } else {
+                return 0;
+            }
         }
 
         inline bool valid() const noexcept {
-            return marked > 0;
+            return tag >= 0;
         }
 
         inline bool invalid() const noexcept {
-            return marked <= 0;
+            return tag < 0;
         }
 
         static bool when_valid(const Zone &zone) noexcept {

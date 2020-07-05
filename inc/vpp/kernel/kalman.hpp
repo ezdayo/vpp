@@ -20,40 +20,69 @@
 
 #pragma once
 
-#include <map>
 #include <opencv2/video/tracking.hpp>
 
 #include "customisation.hpp"
+#include "vpp/kernel.hpp"
 #include "vpp/zone.hpp"
 
 namespace VPP {
 namespace Kernel {
+namespace Kalman {
 
-class Kalman : public Parametrisable {
+class Parameters : public cv::KalmanFilter {
     public:
-        class Model : public cv::KalmanFilter {
-            public:
-                Model() noexcept;
-                Model(const Model &other) noexcept;
-                ~Model() noexcept;
+        Parameters() noexcept 
+            : cv::KalmanFilter(Zone::State::length, Zone::Measure::length, 0, 
+                               CV_32F), timeout(10.0) {};
+        Parameters(const Parameters &other) noexcept = default;        
+        Parameters(Parameters &&other) noexcept = default;
+        Parameters &operator=(const Parameters &other) = delete;
+        Parameters &operator=(Parameters &&other) = delete;
+        ~Parameters() noexcept = default;
 
-                bool predictability(float time) noexcept;
-                bool valid() const noexcept;
-                float accuracy() const noexcept;
+        float timeout;
+};
 
-                void invalidate() noexcept;
-                void predict(float dt, VPP::Zone::State &state) noexcept;
-                void correct(VPP::Zone::State &state) noexcept;
+class Context : public VPP::Kernel::Context, cv::KalmanFilter {
+    public:
+        explicit Context(Zone &zone, const Zone::Copier &copier,
+                         unsigned int sz, Parameters &params) noexcept;
+        ~Context() noexcept = default;
 
-            private:
-                float validity;
-                float timeout;
-        };
+        /* Initialising the Karman filter (resetting the filters) */ 
+        void initialise() noexcept;
 
-        explicit Kalman() noexcept;
-        ~Kalman() noexcept;
+        bool valid() const noexcept;
+        float accuracy() const noexcept;
+
+        void invalidate() noexcept;
+
+        /* Stack the predicted zone atop */
+        void predict(const VPP::View &view, float dt) noexcept;
+
+        /* Use the zone atop for the correction of the bottom one and remove
+         * all zones in between. It does nothing if there is only one zone
+         * stacked */
+        void correct() noexcept;
+
+    protected:
+        float       validity;
+        Parameters &config;
+};
+
+using Contexts = std::vector<std::reference_wrapper<Context>>;
+
+class Engine : public VPP::Kernel::Engine<Engine, Context> {
+    public:
+        using Parent = VPP::Kernel::Engine<Engine, Context>;
+
+        explicit Engine(const Zone::Copier &c, unsigned int sz = 2) noexcept;
+        ~Engine() noexcept = default;
 
         Customisation::Error setup() noexcept override;
+
+        Customisation::Error clear() noexcept override;
 
         /* Predictability timeout: the time after which a tracked object is
          * no longer estimated if not seen again */
@@ -96,15 +125,15 @@ class Kalman : public Parametrisable {
         PARAMETER(Direct, None, Immediate, std::vector<float>) R2;
         PARAMETER(Direct, None, Immediate, std::vector<float>) R3;
         PARAMETER(Direct, None, Immediate, std::vector<float>) R4;
-                                    
-        Model &predictor(Zone &z) noexcept;
-
+        
+        void prepare(const Zones &zs) noexcept;
+                                   
     protected:
         Customisation::Error onPredictabilityUpdate(const float &t) noexcept;
 
-        Model                     model;
-        std::map<uint64_t, Model> tracked;
+        Parameters           model;
 };
 
+}  // namespace Kalman
 }  // namespace Kernel
 }  // namespace VPP

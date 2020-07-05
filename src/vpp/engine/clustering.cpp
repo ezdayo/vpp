@@ -21,9 +21,9 @@ namespace VPP {
 namespace Engine {
 
 Clustering::Clustering() noexcept
-    : dnj(Util::Task::Mode::Sync)
+    : dnj(Util::Task::Core::Mode::Sync)
 #ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT
-      , similarity(Util::Task::Mode::Sync)
+      , similarity(Util::Task::Core::Mode::Sync)
 #endif
       {
 #ifdef VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT

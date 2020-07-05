@@ -34,8 +34,11 @@
 namespace VPP {
 namespace Task {
 
-class MSER : public Task::ForScene {
+class MSER : public Task::Single<MSER, Scene&> {
     public:
+        using Parent = VPP::Task::Single<MSER, Scene&>;
+        using typename Parent::Mode;
+
         explicit MSER(const int mode) noexcept;
         ~MSER() noexcept = default;
 
@@ -56,8 +59,7 @@ class MSER : public Task::ForScene {
                             const std::vector<cv::Point> &contour) 
                       noexcept> filter;
 
-    protected:
-        Error::Type process(Scene &scene) noexcept override;
+        Error::Type process(Scene &scene) noexcept;
 
     private:
         /* OpenCV MSER shared smart pointer */

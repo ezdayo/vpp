@@ -24,16 +24,17 @@ namespace Task {
 namespace Kernel {
 namespace Kalman {
 
-Prediction::Prediction(const int mode, VPP::Kernel::Kalman &f) noexcept
-    : VPP::Tasks::ForZones(mode), kalman(f), dt(0) {}
+Prediction::Prediction(const int mode, VPP::Kernel::Kalman::Engine &e) noexcept
+    : Parent(mode), kalman(e), dt(0) {}
 
-Error::Type Prediction::start(Scene &s, Zones &zs, float dt) noexcept {
+Error::Type Prediction::start(Scene &s, float dt) noexcept {
     this->dt = dt;
     if (dt <= 0) {
         return Error::OK;
     }
 
-    return VPP::Tasks::ForZones::start(s, zs);
+    auto contexts = std::move(kalman.contexts(kalman.history_contexts));
+    return Parent::start(contexts, s);
 }
 
 Error::Type Prediction::wait() noexcept {
@@ -41,50 +42,25 @@ Error::Type Prediction::wait() noexcept {
         return Error::OK;
     }
 
-    return VPP::Tasks::ForZones::wait();
+    return Parent::wait();
 }
 
-Error::Type Prediction::process(Scene &scn, Zone &z) noexcept {
-    if (z.valid()) {
-
-        auto &model = kalman.predictor(z);
-        if (model.valid()) {
-            /* Update the zone spatial contents */
-            auto centre   = z.state.centre;
-            auto size     = z.state.size;
-            cv::Point3f c = centre;
-            cv::Point3f s(size.x/2, size.y/2, 0);
-            
-            auto tl       = scn.view.depth.project(c-s);
-            auto br       = scn.view.depth.project(c+s);
-            auto geom     = br - tl;
-
-            z.x           = tl.x;
-            z.y           = tl.y;
-            z.width       = geom.x;
-            z.height      = geom.y;
-        } else {
-            z.invalidate();
-        }
-    }
-
+Error::Type Prediction::process(VPP::Kernel::Context &c, Scene &scn) noexcept {
+    kalman.context(c).predict(scn.view, dt);
     return Error::OK;
 }
 
-Correction::Correction(const int mode, VPP::Kernel::Kalman &f) noexcept
-    : VPP::Tasks::ForZones(mode), kalman(f) {}
+Correction::Correction(const int mode, VPP::Kernel::Kalman::Engine &e) noexcept
+    : Parent(mode), kalman(e) {}
 
-Error::Type Correction::process(Scene &/*s*/, Zone &z) noexcept {
+Error::Type Correction::start(Scene &s) noexcept {
+    auto contexts = std::move(kalman.contexts(kalman.history_contexts));
+    return Parent::start(contexts, s);
+}
 
-    if (z.valid()) {
-        auto &model = kalman.predictor(z);
-        if (model.valid()) {
-            model.correct(z.state);
-        } else {
-            z.invalidate();
-        }
-    }
-
+Error::Type Correction::process(VPP::Kernel::Context &c, 
+                                Scene &/*s*/) noexcept {
+    kalman.context(c).correct();
     return Error::OK;
 }
 

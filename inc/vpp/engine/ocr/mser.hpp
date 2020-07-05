@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "customisation/parameter.hpp"
 #include "vpp/error.hpp"
 #include "vpp/engine.hpp"
 #include "vpp/scene.hpp"

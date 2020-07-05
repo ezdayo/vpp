@@ -49,7 +49,7 @@ static bool keep_letters(const cv::Mat &/*img*/, const cv::Rect &zone,
 }
 
 MSER::MSER() noexcept
-    : ForScene(), detector(Task::ForScene::Mode::Sync) {
+    : ForScene(), detector(Task::MSER::Mode::Sync) {
     detector.denominate("detector");
     expose(detector);
 

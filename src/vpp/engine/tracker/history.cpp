@@ -20,8 +20,8 @@ namespace VPP {
 namespace Engine {
 namespace Tracker {
 
-History::History(Scene &history) noexcept 
-    : VPP::Engine::ForScene(), latest(history) {}
+History::History(Scene &history, std::mutex &synchro) noexcept 
+    : VPP::Engine::ForScene(), latest(history), update(synchro) {}
         
 History::~History() noexcept = default;
 
@@ -32,6 +32,7 @@ Customisation::Error History::setup() noexcept {
 }
         
 Error::Type History::process(Scene &scene) noexcept {
+    std::lock_guard<std::mutex> lock(update);
     latest = std::move(scene.remember());
     return Error::NONE;
 }

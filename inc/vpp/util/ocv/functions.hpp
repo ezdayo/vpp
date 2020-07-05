@@ -39,7 +39,8 @@ template <typename P>
 
 /* This is a measure of the affinity between two rectangles 
  * If the two rectangles overlap, then the affinity is the overlapping area; 
- * Otherwise this is the square minimal distance between the two rectangles
+ * Otherwise this is the opposite of the square minimal distance between the
+ * two rectangles
  */
 template <typename R> typename R::value_type affinity(const R &a, const R &b);
 

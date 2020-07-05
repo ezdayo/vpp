@@ -26,8 +26,13 @@
 namespace VPP {
 namespace Task {
 
-class Edging : public Task::ForScene {
+class Edging : public VPP::Task::Single<Edging, Scene&> {
     public:
+        using Parent = VPP::Task::Single<Edging, Scene&>;
+        using typename Parent::Mode;
+        using Parent::process;
+        using Parent::start;
+
         explicit Edging(const int mode) noexcept;
         ~Edging() noexcept = default;
 
@@ -39,8 +44,7 @@ class Edging : public Task::ForScene {
         PARAMETER(Direct, Saturating, Immediate, int) kernel_size;
         PARAMETER(Direct, Saturating, Immediate, int) levels;
 
-    protected:
-        Error::Type process(Scene &scene) noexcept override;
+        Error::Type process(Scene &scene) noexcept;
 };
 
 }  // namespace Task

@@ -18,75 +18,69 @@
 
 #pragma once
 
-#include <map>
 #include <opencv2/imgproc.hpp>
 #include <utility>
 
 #include "customisation.hpp"
+#include "vpp/kernel.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/zone.hpp"
 
 namespace VPP {
 namespace Kernel {
+namespace Histogram {
+        
+struct Parameters {
+    struct Mask {
+        bool                        valid;   
+        cv::Scalar                  low;
+        cv::Scalar                  high;
+    };
 
-class Histogram : public Parametrisable {
+        int                         mode;
+        int                         entries;
+        std::vector<const float *>  ranges;
+        std::vector<int>            sizes;
+        std::vector<int>            channels;
+        /* Storage space for the ranges */
+        std::vector<float>          storage;
+
+        Mask                        mask;
+        
+        bool operator == (const Parameters &other) const noexcept;
+};
+
+class Context : public VPP::Kernel::Context {
     public:
-        class Parameters {
-            public:
-                class Histogram {
-                    public:        
-                        int                         mode;
-                        int                         entries;
-                        std::vector<const float *>  ranges;
-                        std::vector<int>            sizes;
-                        std::vector<int>            channels;
-                        /* Storage space for the ranges */
-                        std::vector<float>          storage;
-                };
+        explicit Context(Zone &zone, const Zone::Copier &copier,
+                         unsigned int sz, Parameters &params) noexcept;
+        ~Context() noexcept = default;
 
-                class Mask {
-                    public:
-                        bool         valid;   
-                        cv::Scalar   low;
-                        cv::Scalar   high;
-                };
+        /* Initialising the histogram (recalculating it) */ 
+        void initialise(View &view) noexcept;
 
-                bool operator == (const Parameters &other) const noexcept;
+        /* Comparing with another histogram */
+        double compare(Context &other, 
+                       enum cv::HistCompMethods method) const noexcept;
 
-                Mask      mask;
-                Histogram histogram;
-        };
+        /* Back projecting the histogram */
+        cv::Mat back_project(View &view) const noexcept;
 
-        class Data {
-            public:
-                explicit Data(Parameters &params, View &view,
-                              const cv::Rect &zone) noexcept;
-                ~Data() noexcept;
+        cv::Mat     signature;
+        cv::Mat     mask;
 
-                /* Preparing the input frame [DEPRECATED use cache!]*/ 
-                static void prepare_input(View &view,
-                                          const Image::Mode &mode) noexcept;
-       
-                /* Updating the histogram (recalculating it) */ 
-                void update(View &view, const cv::Rect &zone) noexcept;
+    protected:
+        Parameters &config;
+};
 
-                /* Comparing with another histogram */
-                double compare(Data &other, 
-                               enum cv::HistCompMethods method) const noexcept;
+using Contexts = std::vector<std::reference_wrapper<Context>>;
 
-                /* Back projecting the histogram */
-                cv::Mat back_project(View &view) const noexcept;
-
-                cv::Mat     signature;
-                cv::Mat     mask;
-
-                Parameters &config;
-        };
-
+class Engine : public VPP::Kernel::Engine<Engine, Context> {
+    public:
         class Ranges : public Parametrisable {
             public:
                 Ranges() noexcept;
-                ~Ranges() noexcept;
+                ~Ranges() noexcept = default;
  
                 Customisation::Error setup() noexcept override;
 
@@ -96,10 +90,14 @@ class Histogram : public Parametrisable {
                           std::vector<float>)               high;
         };
 
-        explicit Histogram() noexcept;
-        ~Histogram() noexcept;
+        using Parent = VPP::Kernel::Engine<Engine, Context>;
+
+        explicit Engine(const Zone::Copier &c, unsigned int sz) noexcept;
+        ~Engine() noexcept = default;
 
         Customisation::Error setup() noexcept override;
+
+        Customisation::Error clear() noexcept override;
 
         /* The list of channels to be used in the histogram */
         PARAMETER(Mapped, Bounded, Immediate, std::vector<int>)        channels;
@@ -109,16 +107,16 @@ class Histogram : public Parametrisable {
         Ranges                                                         ranges;
         PARAMETER(Direct, Saturating, Immediate, std::vector<int32_t>) bins;
 
-        Data &data(View &view, const Zone &zone) noexcept;
+        void prepare(const Zones &zs) noexcept;
 
         Image::Mode mode() const noexcept {
-            return config.histogram.mode;
+            return config.mode;
         }
 
     protected:
-        std::map<uint64_t, Data> tracked;
         Parameters               config;
 };
 
+}  // namespace Histogram
 }  // namespace Kernel
 }  // namespace VPP

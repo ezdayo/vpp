@@ -23,11 +23,23 @@
 
 namespace VPP {
 
-static Zone invalid;
+void Zone::Copy::UUID(Zone& out, const Zone &in) noexcept {
+    out.uuid        = in.uuid;
+    out.state       = in.state;
+}
 
-Zone::Zone(BBox bbox, std::vector<Prediction> preds) noexcept
-    : BBox(std::move(bbox)), state(), contour(), description(), marked(0) {
-        predict(std::move(preds));
+void Zone::Copy::Geometries(Zone& out, const Zone &in) noexcept {
+    out.uuid        = in.uuid;
+    out.state       = in.state;
+}
+
+void Zone::Copy::All(Zone& out, const Zone &in) noexcept {
+    out.uuid        = in.uuid;
+    out.state       = in.state;
+    out.contour     = in.contour;
+    out.predictions = in.predictions;
+    out.description = in.description;
+    out.tag      = in.tag;
 }
 
 Zone &Zone::predict(Prediction pred) noexcept {
@@ -55,6 +67,36 @@ Zone &Zone::predict(std::vector<Prediction> preds) noexcept {
     return *this;
 }
 
+void Zone::project(const View &view) noexcept {
+    /* Update the zone from the state */
+    auto centre   = state.centre;
+    auto size     = state.size;
+    cv::Point3f c = centre;
+    cv::Point3f s(size.x/2, size.y/2, 0);
+            
+    auto tl       = view.depth.project(c-s);
+    auto br       = view.depth.project(c+s);
+    auto geom     = br - tl;
+
+    x             = tl.x;
+    y             = tl.y;
+    width         = geom.x;
+    height        = geom.y;
+}
+
+void Zone::deproject(const View &view) noexcept {
+    /* Update the state from the zone */
+    auto z = view.depth.at((cv::Rect::tl()+cv::Rect::br())/2);
+
+    auto tl = view.depth.deproject(cv::Rect::tl(), z);
+    auto br = view.depth.deproject(cv::Rect::br(), z);
+    auto sz = br-tl;
+
+    state.centre = (tl+br)/2;
+    state.size.x = sz.x;
+    state.size.y = sz.y;
+}
+
 Zone &Zone::update(Zone &older) noexcept {
     ASSERT(valid(),
            "Zone::update(older) : Impossible to update an invalid zone.");
@@ -62,8 +104,8 @@ Zone &Zone::update(Zone &older) noexcept {
            "Zone::update(older) : Impossible to update a zone with an invalid "
            "one.");
 
-    uuid    = older.uuid;
-    marked += older.marked;
+    uuid = older.uuid;
+    tag += older.tag;
 
     predict(std::move(older.predictions));
 

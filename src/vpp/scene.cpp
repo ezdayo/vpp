@@ -24,31 +24,24 @@
 
 namespace VPP {
 
-static Zone invalid;
-
 Scene::Scene() noexcept : view(), areas(), ts(0) { }
 
 Zone &Scene::mark(Zone zone) noexcept {
     static uint64_t next_uuid = 0;
-    
+    static Zone     invalid;
+ 
     /* Crop the zone to prevent any issue and discard outside zones */
     static_cast<cv::Rect &>(zone) = zone & view.frame(); 
     if ((zone.width <= 0 ) || (zone.height <= 0)) {
+        invalid = std::move(zone.copy(Zone::Copy::BBoxOnly));
+        invalid.invalidate();
         return invalid;
     }
 
-    /* Perform real-size measurement (if not already set) */
-    auto z = view.depth.at((zone.tl()+zone.br())/2);
-
-    auto tl = view.depth.deproject(zone.tl(), z);
-    auto br = view.depth.deproject(zone.br(), z);
-    auto sz = br-tl;
-
-    zone.uuid         = ++next_uuid;
-    zone.state.centre = (tl+br)/2;
-    zone.state.size.x = sz.x;
-    zone.state.size.y = sz.y;
-    zone.marked++;
+    zone.uuid = ++next_uuid;
+    /* Update the zone state contents */
+    zone.deproject(view);
+    zone.tag++;
 
     areas.emplace_back(std::move(zone));
 

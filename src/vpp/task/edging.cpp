@@ -28,7 +28,7 @@
 namespace VPP {
 namespace Task {
 
-Edging::Edging(const int mode) noexcept : ForScene(mode) {
+Edging::Edging(const int mode) noexcept : Parent(mode) {
     
     input_scale.denominate("input_scale")
          .describe("Input scaling factor for accelerating edge detection")

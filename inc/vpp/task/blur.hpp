@@ -26,8 +26,13 @@ namespace VPP {
 namespace Task {
 namespace Blur {
 
-class Skipping : public Tasks::Tiled {
+class Skipping : public VPP::Tasks::Tiled<Skipping> {
     public:
+        using Parent = VPP::Tasks::Tiled<Skipping>;
+        using typename Parent::Mode;
+        using Parent::process;
+        using Parent::next;
+
         explicit Skipping(const int mode) noexcept;
         virtual ~Skipping() noexcept = default;
 
@@ -42,8 +47,7 @@ class Skipping : public Tasks::Tiled {
         Error::Type start(Scene &s, cv::Rect &frame) noexcept;
         Error::Type wait() noexcept;
 
-    protected:
-        virtual Error::Type process(Scene &s, cv::Rect &r) noexcept override;
+        Error::Type process(Scene &s, cv::Rect &r) noexcept;
 
     private:
         int tiles_valid;

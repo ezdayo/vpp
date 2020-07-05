@@ -30,34 +30,52 @@ namespace Task {
 namespace Kernel {
 namespace Kalman {
 
-class Prediction : public Tasks::ForZones {
+class Prediction
+    : public VPP::Tasks::List<Prediction, VPP::Kernel::Kalman::Contexts&,
+                              Scene&> {
     public:
-        explicit Prediction(const int mode, VPP::Kernel::Kalman &f) noexcept;
+        using Parent = 
+                VPP::Tasks::List<Prediction, VPP::Kernel::Kalman::Contexts&,
+                                 Scene&>;
+        using typename Parent::Mode;
+        using Parent::process;
+        using Parent::next;
+
+        explicit Prediction(const int mode,
+                            VPP::Kernel::Kalman::Engine &e) noexcept;
         virtual ~Prediction() noexcept = default;
  
-        Error::Type start(Scene &s, Zones &zs, float dt) noexcept;
+        Error::Type start(Scene &s, float dt) noexcept;
         Error::Type wait() noexcept;
 
-     protected:
-        virtual Error::Type process(Scene &s, Zone &z)
-            noexcept override final;
+        Error::Type process(VPP::Kernel::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Kalman &kalman;
-        float                dt;
+        VPP::Kernel::Kalman::Engine &kalman;
+        float                        dt;
 };
 
-class Correction : public Tasks::ForZones {
+class Correction 
+    : public VPP::Tasks::List<Correction, VPP::Kernel::Kalman::Contexts&,
+                              Scene&> {
     public:
-        explicit Correction(const int mode, VPP::Kernel::Kalman &f) noexcept;
+        using Parent =
+                VPP::Tasks::List<Correction, VPP::Kernel::Kalman::Contexts&,
+                                 Scene&>;
+        using typename Parent::Mode;
+        using Parent::process;
+        using Parent::next;
+        
+        explicit Correction(const int mode,
+                            VPP::Kernel::Kalman::Engine &e) noexcept;
         virtual ~Correction() noexcept = default;
  
-     protected:
-        virtual Error::Type process(Scene &s, Zone &z)
-            noexcept override final;
+        Error::Type start(Scene &s) noexcept;
+
+        Error::Type process(VPP::Kernel::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Kalman &kalman;
+        VPP::Kernel::Kalman::Engine &kalman;
 };
 
 

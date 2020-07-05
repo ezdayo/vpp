@@ -82,9 +82,9 @@ include(mk/cxx-code-quality-rules.cmake)
 # Binary targets
 #
 
-if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
-    add_definitions(-DNDEBUG)
-endif()
+#if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
+#    add_definitions(-DNDEBUG)
+#endif()
 
 # Configure header files
 if(DARKNET_FOUND)
@@ -170,10 +170,10 @@ set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/edging.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/reader.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/overlay.cpp
-	       ${PROJECT_SOURCE_DIR}/src/vpp/task.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/blur.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/clustering.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/edging.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/task/matcher.cpp
 	       #${PROJECT_SOURCE_DIR}/src/vpp/tracker.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/ui/overlay.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/util/io/image.cpp

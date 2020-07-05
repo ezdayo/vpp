@@ -25,10 +25,11 @@
 #include "vpp/util/task.hpp"
 
 namespace Util {
+namespace Task {
 
-Task::Task(const int mode) noexcept : _error(0) {
+Core::Core(const int mode) noexcept : _error(0) {
     int cnt = abs(mode);
-
+    
     for (int i=0; i < std::min(16, cnt); ++i) {
         _status.emplace_front();
     }
@@ -40,7 +41,7 @@ Task::Task(const int mode) noexcept : _error(0) {
     }
 }
 
-int Task::start(Work work) noexcept {
+int Core::start(Work work) noexcept {
     if (_mode == Mode::Sync) {
         _error = work();
         return 0;
@@ -60,7 +61,7 @@ int Task::start(Work work) noexcept {
   return 0;
 }
 
-int Task::wait() noexcept {
+int Core::wait() noexcept {
     if (_mode != Mode::Sync) {
 
         _error = INT_MAX;
@@ -75,4 +76,5 @@ int Task::wait() noexcept {
     return _error;
 }
 
+}  // namespace Task
 }  // namespace Util

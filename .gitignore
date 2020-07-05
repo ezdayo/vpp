@@ -1,6 +1,7 @@
 inc/vpp/config.hpp
 deprecated/
 bld/
+build*/
 debug/
 dbg/
 doc/

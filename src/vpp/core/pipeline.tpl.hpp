@@ -135,6 +135,8 @@ template <typename ...Z>
 
             /* If no longer running or if an error happened, then exit */
             if (do_exit) {
+                /* Flushing what's inside and beyond the pipeline */
+                flush();
                 run    = false;
                 halt   = false;
                 zombie = true;
@@ -215,7 +217,9 @@ Customisation::Error Pipeline<Z...>::onRunningUpdate(bool yes) noexcept {
         if ( (run == yes) && (run == joinable) ) {
             /* If requesting to start again whilst running, this is likely a
              * retry man... */
-            if (run) { retry = true; }
+            if (run) { 
+                retry = true; 
+            } 
             return Customisation::Error::NONE;
         }
 
@@ -232,6 +236,9 @@ Customisation::Error Pipeline<Z...>::onRunningUpdate(bool yes) noexcept {
             if (yes) {
                 thread = std::thread([this] { return this->launch(); } );
                 return Customisation::Error::NONE;
+            } 
+            else {
+                /* If no longer running then flush the pipeline content */
             }
         }
 

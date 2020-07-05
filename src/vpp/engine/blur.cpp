@@ -24,7 +24,7 @@ namespace VPP {
 namespace Engine {
 namespace Blur {
 
-Skipping::Skipping() noexcept : task(Tasks::Tiled::Mode::Async*8) {
+Skipping::Skipping() noexcept : task(VPP::Task::Blur::Skipping::Mode::Async*8) {
     
     task.tile.width  = 16;
     task.tile.height = 16;

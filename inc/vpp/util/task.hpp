@@ -22,13 +22,17 @@
 
 #pragma once
 
+#include <cassert>
 #include <forward_list>
 #include <future>
 #include <string>
 
-namespace Util {
+#include "vpp/util/templates.hpp"
 
-class Task {
+namespace Util {
+namespace Task {
+
+class Core {
     public:
 
         /** Operating mode of task (deferred or asynchronous launch) */
@@ -53,14 +57,14 @@ class Task {
          *        multiplier can me added to define the maximum number of
          *        asynchronous threads
          */
-        explicit Task(const int mode) noexcept;
+        explicit Core(const int mode) noexcept;
+        ~Core() noexcept = default;
 
-        /** Tasks can be copied and moved */
-        Task(const Task& other) = default;
-        Task(Task&& other) = default;
-        Task& operator=(const Task& other) = default;
-        Task& operator=(Task&& other) = default;
-        virtual ~Task() noexcept = default;
+        /** Tasks cannot be copied nor moved */
+        Core(const Core& other) = delete;
+        Core(Core&& other) = delete;
+        Core& operator=(const Core& other) = delete;
+        Core& operator=(Core&& other) = delete;
 
         /** Start processing a task */
         int start(Work work) noexcept;
@@ -74,4 +78,251 @@ class Task {
         std::forward_list<std::future<int> > _status;  /// Status when task ends
 };
 
+/* Using the curiously recurring template pattern (CRTP) for performance
+ * T is the final task class, E is the optional environment parameter 
+ * references. This class instantiate a single task for performing actions in 
+ * background or so... */
+template <typename T, typename ...E> class Single : public Core {
+    public:
+        inline explicit Single(const int mode) noexcept : Core(mode) {
+            /* Prevent using more than one task for a single task */
+#ifndef NDEBUG 
+            assert(((mode == Mode::Async) || (mode == Mode::Sync) || 
+                   (mode == Mode::Lazy)));
+#endif /*!NDEBUG*/ 
+        }
+        inline ~Single() noexcept = default;
+
+        /** Start processing the optional environment */
+        inline int start(E&... e) noexcept {
+            /* This is where the trick is: Do not force passing by reference, 
+             * after the lambda function parameters so that non-referenced 
+             * objects are instantiated and have a storage space in the dispatch
+             * function parameters, whereas referenced one keep the intial
+             * reference. It is not possible to do the same in the lambda
+             * function call, as the lambda does not have an explicit signature.
+             */
+            return Core::start([this, &e...] { 
+                return dispatch(e...); });
+        }
+
+    protected:
+        inline int dispatch(E... e) noexcept {
+            return static_cast<T*>(this)->process(e...);
+        }
+
+        /** Do the actual processing */
+        inline int process(E&... /*e*/) noexcept {
+            /* process(): Process shall be redefined in child classes! */
+#ifndef NDEBUG 
+            assert(false);
+#endif /*!NDEBUG*/ 
+            return -1;
+        }
+};
+
+}  // namespace Task
+
+namespace Tasks {
+
+/* Using the curiously recurring template pattern (CRTP) for performance
+ * T is the final task class, E is the optional environment parameters, I is the
+ * This class instantiate multiple tasks for performing what is in process
+ * actions in background unless deferred... */
+template <typename T, typename ...E> class Core : public Util::Task::Core {
+    public:
+        using typename Util::Task::Core::Mode;
+
+        inline explicit Core(const int mode) noexcept
+            : Util::Task::Core(mode), synchro() {}
+        inline ~Core() noexcept = default;
+
+        /** Start processing the environment */
+        inline int start(E&... e) noexcept {
+           /* This is where the trick is: Do not force passing by reference, 
+             * after the lambda function parameters so that non-referenced 
+             * objects are instantiated and have a storage space in the dispatch
+             * function parameters, whereas referenced one keep the intial
+             * reference. It is not possible to do the same in the lambda
+             * function call, as the lambda does not have an explicit signature.
+             */
+            return Util::Task::Core::start([this, &e...] { 
+                return dispatch(e...); });
+        }
+
+    protected:
+        inline int dispatch(E... e) noexcept {
+            std::unique_lock<std::mutex> access(synchro, std::defer_lock);
+            int error  = 0;
+            bool again = true;
+            while (again) {
+                access.lock();
+                again = static_cast<T *>(this)->next(e...);
+                access.unlock();
+                if (again) {
+                    error = static_cast<T *>(this)->process(e...);
+                    if (error < 0) {
+                        again = false;
+                    }
+                }
+            }
+            return error;
+        }
+
+        /** Iterator to do things in parallel */
+        inline bool next(E&... /*e*/) noexcept {
+            /* next(): Next environment computation shall be redefined in child
+             * classes! */
+#ifndef NDEBUG 
+            assert(false);
+#endif /*!NDEBUG*/ 
+            return false;
+        }
+        
+        /** Where to do the actual environment processing */
+        inline int process(E&... /*e*/) noexcept {
+            /* process(): Process shall be redefined in child classes! */
+#ifndef NDEBUG 
+            assert(false);
+#endif /*!NDEBUG*/ 
+            return -1;
+        }
+
+        /** Mutex for synchronising access between tasks */
+        std::mutex            synchro;
+};
+
+/* Tasks list are only relevant when the L type is a container! 
+ * This class manages containers of reference_wrappers as if they were 
+ * standard (plain) containers */
+template <typename T, typename L, typename ...E> 
+    class List : public Core<T, containee_object_t<L>*, L, E...> {
+    public:
+        using O = containee_object_t<L>;
+        using Parent = Core<T, O*, L, E...>;
+        using typename Parent::Mode;
+        using Parent::wait;
+        using Parent::process;
+
+        inline explicit List(const int mode) noexcept 
+            : Parent(mode), synchro() {}
+        inline ~List() noexcept = default;
+
+        /** Start processing the environment */
+        inline int start(L& l, E&... e) noexcept {
+            O *o = nullptr;
+            it = l.begin(); 
+            return Parent::start(o, l, e...);
+        }
+
+    protected:
+        /** Iterator to do things in parallel */
+        inline bool next(O* &o, L& l, E&... /*e*/) noexcept {
+            if (it == l.end()) {
+                return false;
+            }
+            /* The cast to O& does nothing with standard containee objects, but
+             * it does de-reference a reference-wrapped object */
+            o = &(static_cast<O&>(*it));
+            ++it;
+            return true;
+        }
+
+        /* The internal process call is calling the final object processing */ 
+        inline int process(O* &o, L& /*l*/, E&... e) noexcept {
+            return static_cast<T*>(this)->process(*o, e...);
+        }
+
+        /** Where to do the actual environment processing */
+        inline int process(O& /*o*/, E&... /*e*/) noexcept {
+            /* process(): Process shall be redefined in child classes! */
+#ifndef NDEBUG 
+            assert(false);
+#endif /*!NDEBUG*/ 
+            return -1;
+        }
+
+        /** Mutex for synchronising access between tasks */
+        std::mutex    synchro;
+
+        /** Iterator on the list of tasks */
+        Util::iterator_t<L> it;
+};
+
+/* Tasks lists are only relevant when the X and Y types are containers! 
+ * This class manages containers of reference_wrappers as if they were 
+ * standard (plain) containers */
+template <typename T, typename X, typename Y, typename ...E> 
+    class Lists : public Core<T, containee_object_t<X>*, X, 
+                              containee_object_t<Y>*, Y,  E...> {
+    public:
+        using XO = containee_object_t<X>;
+        using YO = containee_object_t<Y>;
+        using Parent = Core<T, XO*, X, YO*, Y, E...>;
+        using typename Parent::Mode;
+        using Parent::wait;
+        using Parent::process;
+
+        inline explicit Lists(const int mode) noexcept 
+            : Parent(mode), synchro() {}
+        inline ~Lists() noexcept = default;
+
+        /** Start processing the environment */
+        inline int start(X& x, Y& y, E&... e) noexcept {
+            XO *xo = nullptr;
+            YO *yo = nullptr;
+            xit = x.begin(); 
+            yit = x.begin(); 
+            return Parent::start(xo, x, yo, y, e...);
+        }
+
+    protected:
+        /** Iterator to do things in parallel */
+        inline bool next(XO* &xo, X& x, YO* &yo, Y& y, E&... /*e*/) noexcept {
+            if ((xit == x.end()) && (yit == y.end())) {
+                return false;
+            }
+
+            /* The cast to O& does nothing with standard containee objects, but
+             * it does de-reference a reference-wrapped object */
+            if (yit != y.end()) {
+                xo = &(static_cast<XO&>(*xit));
+                yo = &(static_cast<YO&>(*yit));
+                ++yit;
+                return true;
+            }
+            yit = y.begin();
+            ++xit;
+            if (xit != x.end()) {
+                xo = &(static_cast<XO&>(*xit));
+                yo = &(static_cast<YO&>(*yit));
+                return true;
+            }
+            return false;
+        }
+
+        /* The internal process call is calling the final object processing */ 
+        inline int process(XO* &xo, X& /*x*/, YO* &yo, Y& /*y*/, E&... e) 
+            noexcept {
+            return static_cast<T*>(this)->process(*xo, *yo, e...);
+        }
+
+        /** Where to do the actual environment processing */
+        inline int process(XO& /*xo*/, YO& /*yo*/, E&... /*e*/) noexcept {
+            /* process(): Process shall be redefined in child classes! */
+#ifndef NDEBUG 
+            assert(false);
+#endif /*!NDEBUG*/ 
+            return -1;
+        }
+
+        /** Mutex for synchronising access between tasks */
+        std::mutex    synchro;
+
+        /** Iterators on the lists of tasks */
+        Util::iterator_t<X> xit;
+        Util::iterator_t<Y> yit;
+};
+
+}  // namespace Tasks
 }  // namespace Util

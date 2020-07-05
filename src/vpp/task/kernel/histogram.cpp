@@ -26,24 +26,49 @@ namespace Task {
 namespace Kernel {
 namespace Histogram {
 
-CamShift::CamShift(const int mode, VPP::Kernel::Histogram &h) noexcept
-    : VPP::Tasks::ForZones(mode), histogram(h), term() {}
+Initialiser::Initialiser(const int mode, 
+                         VPP::Kernel::Histogram::Engine &e) noexcept
+    : Parent(mode), histogram(e) {}
 
-Error::Type CamShift::start(Scene &s, Zones &zs) noexcept {
-    /* Cache the right mode for the view */
+Error::Type Initialiser::start(Scene &s, Zones &zs) noexcept {
+    /* Cache the right mode for the view and prepare the engine for the new
+     * zones */
     s.view.cache(histogram.mode());
-    return VPP::Tasks::ForZones::start(s, zs);
+    histogram.prepare(zs);
+    /* Only consider the new (original) contexts */
+    auto contexts = std::move(histogram.contexts(histogram.original_contexts));
+    return Parent::start(contexts, s);
 }
 
-Error::Type CamShift::process(Scene &scn, Zone &z) noexcept {
-    if (z.valid()) {
-        auto &data = histogram.data(scn.view, z);
-        auto dest  = std::move(data.back_project(scn.view));
-        cv::Rect estimated(z);
+Error::Type Initialiser::process(VPP::Kernel::Context &c, Scene &scn) noexcept {
+    
+    ASSERT(c.original != nullptr,
+           "Task::Kernel::Histogram::Initialiser::process(): Cannot initialise "
+           "old contexts");
+
+    histogram.context(c).initialise(scn.view);
+
+    return Error::OK;
+}
+
+
+CamShift::CamShift(const int mode, VPP::Kernel::Histogram::Engine &e) noexcept
+    : Parent(mode), histogram(e), term() {}
+
+Error::Type CamShift::start(Scene &s) noexcept {
+    /* Cache the right mode for the view */
+    s.view.cache(histogram.mode());
+    auto contexts = std::move(histogram.contexts(histogram.history_contexts));
+    return Parent::start(contexts, s);
+}
+
+Error::Type CamShift::process(VPP::Kernel::Context &c, Scene &scn) noexcept {
+    if (c.zone().valid()) {
+        auto dest  = std::move(histogram.context(c).back_project(scn.view));
+        cv::Rect estimated(c.zone());
         cv::CamShift(dest, estimated, term);
-        /* Find a way to track new estimated positions [WORK ON COPIES ?] or 
-         * put it back in the provided zone ? Maybe a zone update is handy to
-         * update the zone with the new setup ? */
+        auto &z = c.stack(Zone(estimated));
+        z.deproject(scn.view);
     }
 
     return Error::OK;

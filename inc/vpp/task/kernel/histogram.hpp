@@ -30,21 +30,51 @@ namespace Task {
 namespace Kernel {
 namespace Histogram {
 
-class CamShift : public Tasks::ForZones {
+class Initialiser
+    : public VPP::Tasks::List<Initialiser, VPP::Kernel::Histogram::Contexts&,
+                              Scene&> {
     public:
-        explicit CamShift(const int mode, VPP::Kernel::Histogram &h) noexcept;
-        virtual ~CamShift() noexcept = default;
+        using Parent =
+                VPP::Tasks::List<Initialiser, VPP::Kernel::Histogram::Contexts&,
+                                 Scene&>;
+        using typename Parent::Mode;
+        using Parent::process;
+        using Parent::next;
 
-        /* To be called with the "historic" zones on the new scene */
+        explicit Initialiser(const int mode,
+                             VPP::Kernel::Histogram::Engine &e) noexcept;
+        ~Initialiser() noexcept = default;
+
         Error::Type start(Scene &s, Zones &zs) noexcept;
 
-     protected:
-        virtual Error::Type process(Scene &s, Zone &z)
-            noexcept override final;
+        Error::Type process(VPP::Kernel::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Histogram &histogram;
-        cv::TermCriteria        term;
+        VPP::Kernel::Histogram::Engine &histogram;
+};
+
+class CamShift 
+    : public VPP::Tasks::List<CamShift, VPP::Kernel::Histogram::Contexts&,
+                              Scene&> {
+    public:
+        using Parent =
+                VPP::Tasks::List<CamShift, VPP::Kernel::Histogram::Contexts&,
+                                 Scene&>;
+        using typename Parent::Mode;
+        using Parent::process;
+        using Parent::next;
+
+        explicit CamShift(const int mode,
+                          VPP::Kernel::Histogram::Engine &e) noexcept;
+        ~CamShift() noexcept = default;
+
+        Error::Type start(Scene &s) noexcept;
+
+        Error::Type process(VPP::Kernel::Context &c, Scene &scene) noexcept;
+
+    private:
+        VPP::Kernel::Histogram::Engine &histogram;
+        cv::TermCriteria                term;
 };
 
 }  // namespace Histogram

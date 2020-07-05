@@ -22,8 +22,8 @@
 namespace VPP {
 namespace Task {
 
-MSER::MSER(const int mode) noexcept
-    : ForScene(mode), filter(nullptr), core(static_cast<cv::MSER *>(nullptr)) {
+MSER::MSER(const int mode) noexcept 
+    : Parent(mode), filter(nullptr), core(static_cast<cv::MSER *>(nullptr)) {
     
     delta.denominate("delta")
          .describe("Indice-delta for comparing size difference")
@@ -93,12 +93,10 @@ void MSER::terminate() noexcept {
 }
 
 Error::Type MSER::process(Scene &scene) noexcept {
-    //cv::Mat                              gray;
     std::vector<std::vector<cv::Point> > areas;
     std::vector<cv::Rect>                bboxes;
 
-    /*cv::cvtColor(scene.view.bgr().input(), gray, cv::COLOR_RGB2GRAY);*/
-    auto &gray = scene.view.image(Image::Mode::GRAY).input();
+    auto &gray = scene.view.gray().input();
     core->detectRegions(gray, areas, bboxes);
     
     for (size_t i = 0; i < areas.size(); ++i) {

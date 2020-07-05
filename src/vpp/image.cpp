@@ -27,6 +27,10 @@ Image::Image() noexcept
     : m(), boundaries(), original(), copy() {
 }
 
+#ifdef NDEBUG
+static inline void check_validity(const cv::Mat &/*data*/,
+                                  const Image::Mode &/*mode*/) {}
+#else
 static void check_validity(const cv::Mat &data,
                            const Image::Mode &mode) {
     ASSERT(mode.channels() == data.channels(),
@@ -35,6 +39,7 @@ static void check_validity(const cv::Mat &data,
            static_cast<int>(mode));
     ASSERT(!data.empty(), "Image::Image(): Provided an empty image!");
 }
+#endif
 
 Image::Image(cv::Mat data, Image::Mode mode) noexcept
     : m(std::move(mode)),

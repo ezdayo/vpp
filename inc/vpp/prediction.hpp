@@ -1,6 +1,6 @@
 /**
  *
- * @file      vpp/scene.hpp
+ * @file      vpp/prediction.hpp
  *
  * @brief     This is the VPP prediction description file
  *

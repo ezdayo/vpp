@@ -24,7 +24,7 @@ namespace Engine {
 namespace OCR {
 
 Edging::Edging() noexcept
-    : ForScene(), detector(Task::ForScene::Mode::Sync) {
+    : ForScene(), detector(Task::Edging::Mode::Sync) {
     detector.denominate("detector");
     expose(detector);
 

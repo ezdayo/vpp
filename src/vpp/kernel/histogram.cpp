@@ -23,34 +23,25 @@
 
 namespace VPP {
 namespace Kernel {
+namespace Histogram {
 
-bool Histogram::Parameters::operator == (const Parameters &other) 
+bool Parameters::operator == (const Parameters &other) 
     const noexcept {
 
-    return (histogram.mode     == other.histogram.mode) &&
-           (histogram.entries  == other.histogram.entries) &&
-           (histogram.storage  == other.histogram.storage) && 
-           (histogram.sizes    == other.histogram.sizes) &&
-           (histogram.channels == other.histogram.channels);
+    return (mode     == other.mode)     && (entries  == other.entries) &&
+           (storage  == other.storage)  && (sizes    == other.sizes)   &&
+           (channels == other.channels);
 }
 
-Histogram::Data::Data(Histogram::Parameters &params, View &view,
-                      const cv::Rect &zone) noexcept
-    : config(params) {
-    update(view, zone);
-}
+Context::Context(Zone &zone, const Zone::Copier &copier, 
+                 unsigned int sz, Parameters &params) noexcept
+    : VPP::Kernel::Context(zone, copier, sz), signature(), mask(),
+      config(params) {}
 
-Histogram::Data::~Data() noexcept = default;
-
-void Histogram::Data::prepare_input(View &view, 
-                                    const Image::Mode &mode) noexcept {
-    view.cache(mode);
-}
-
-void Histogram::Data::update(View &view, const cv::Rect &zone) noexcept {
+void Context::initialise(View &view) noexcept {
     /* Use the cached histogram mode view and only make it to the zone if 
      * it is not available */
-    auto roi = std::move(view.image(config.histogram.mode, zone));
+    auto roi = std::move(view.image(config.mode, zone()));
 
     if (config.mask.valid) {
         inRange(roi.input(), config.mask.low, config.mask.high, mask);
@@ -58,39 +49,37 @@ void Histogram::Data::update(View &view, const cv::Rect &zone) noexcept {
         mask = cv::Mat();
     }
 
-    cv::calcHist(&roi.input(), 1, config.histogram.channels.data(), mask,
-                 signature, config.histogram.entries, 
-                 config.histogram.sizes.data(), config.histogram.ranges.data(),
+    cv::calcHist(&roi.input(), 1, config.channels.data(), mask, signature, 
+                 config.entries, config.sizes.data(), config.ranges.data(),
                  true, false);
     cv::normalize(signature, signature, 0, 255, cv::NORM_MINMAX);
 }
 
-double Histogram::Data::compare(Data &other, enum cv::HistCompMethods method)
+double Context::compare(Context &other, enum cv::HistCompMethods method)
     const noexcept {
 
     ASSERT(config == other.config, 
-           "Histogram::Data::compare(): Comparing histograms of different "
+           "Engine::Context::compare(): Comparing histograms of different "
            "configuations!");
 
     return cv::compareHist(signature, other.signature, method);
 }
 
-cv::Mat Histogram::Data::back_project(View &view) const noexcept {
+cv::Mat Context::back_project(View &view) const noexcept {
     /* Get a reference to a cached view of the requested mode (and create the
      * cache if it does not exists yet). And do the back project computation
      * with this cached image */
-    auto &img = view.image(config.histogram.mode);
+    auto &img = view.image(config.mode);
     cv::Mat dst;
 
-    cv::calcBackProject(&img.input(), 1, config.histogram.channels.data(),
-                        signature, dst, config.histogram.ranges.data(), 1.0, 
-                        true);
+    cv::calcBackProject(&img.input(), 1, config.channels.data(), signature, dst,
+                        config.ranges.data(), 1.0, true);
 
     /* Copy elision happens here */
     return dst;
 }
 
-Histogram::Ranges::Ranges() noexcept : Customisation::Entity("Channel") {
+Engine::Ranges::Ranges() noexcept : Customisation::Entity("Channel") {
     low.denominate("low")
        .describe("The inclusive dynamic low values for each channel. Pixels "
                  "having a value stricly lower than this low boundary are "
@@ -108,15 +97,13 @@ Histogram::Ranges::Ranges() noexcept : Customisation::Entity("Channel") {
     Customisation::Entity::expose(high);
 }
 
-Histogram::Ranges::~Ranges() noexcept = default;
-
-Customisation::Error Histogram::Ranges::setup() noexcept {
+Customisation::Error Engine::Ranges::setup() noexcept {
     std::vector<float> l = low;
     std::vector<float> h = high;
 
     /* Check if the size is correct */
     if ( (l.size() != h.size()) ) {
-        LOGE("Kernel::Histogram::Ranges::setup(): low and high vectors "
+        LOGE("Kernel::Engine::Ranges::setup(): low and high vectors "
              "are of different sizes!");
         return Customisation::Error::INVALID_RANGE;
     }
@@ -125,7 +112,7 @@ Customisation::Error Histogram::Ranges::setup() noexcept {
     auto hit = h.begin();
     for (auto lit = l.begin(); lit != l.end(); ) {
         if (*lit > *hit) {
-            LOGE("Kernel::Histogram::Ranges::setup(): low boundary %f is "
+            LOGE("Kernel::Engine::Ranges::setup(): low boundary %f is "
                  "higher than the corresponding high boundary %f!", *lit, *hit);
             return Customisation::Error::INVALID_RANGE;
         }
@@ -137,8 +124,8 @@ Customisation::Error Histogram::Ranges::setup() noexcept {
     return Customisation::Error::NONE;
 } 
 
-Histogram::Histogram() noexcept
-    : Customisation::Entity("Channel"), tracked(), config() {
+Engine::Engine(const Zone::Copier &c, unsigned int sz) noexcept
+    : VPP::Kernel::Engine<Engine, Context>(c, sz), config() {
     channels.denominate("channels")
             .describe("The selected channels for the histogram, can be any "
                       "combination of H, S, V or R, G, B or GRAY -"
@@ -201,21 +188,19 @@ Histogram::Histogram() noexcept
     bins        = { 180, 256, 256 };
 }
 
-Histogram::~Histogram() noexcept = default;
-
-Customisation::Error Histogram::setup() noexcept {
+Customisation::Error Engine::setup() noexcept {
     /* Store the channel ordering directly in the common parameters */
-    config.histogram.channels = channels;
-    auto entries = config.histogram.channels.size();
+    config.channels = channels;
+    auto entries = config.channels.size();
 
     if (entries == 0) {
-        LOGE("Kernel::Histogram::setup(): no channels selected!");
+        LOGE("Kernel::Engine::setup(): no channels selected!");
         return Customisation::Error::INVALID_RANGE;
     }
 
     /* Extract the channels mode and keep only the channel indexes */
     int c = 0;
-    for (auto &v : config.histogram.channels) {
+    for (auto &v : config.channels) {
         c |= v;
         v  = Image::Channel(v).id(); 
     }
@@ -224,7 +209,7 @@ Customisation::Error Histogram::setup() noexcept {
 
     switch (mode) {
         case 0:
-            LOGE("Kernel::Histogram::setup(): Ambiguous colour space "
+            LOGE("Kernel::Engine::setup(): Ambiguous colour space "
                  "requested! Cannot get it from the provided channels.");
             return Customisation::Error::INVALID_VALUE;
             break;
@@ -235,13 +220,13 @@ Customisation::Error Histogram::setup() noexcept {
             break;
         case Image::Mode::GRAY:
             if ((cfg.id()) != 0) {
-                LOGE("Kernel::Histogram::setup(): Requesting channel "
+                LOGE("Kernel::Engine::setup(): Requesting channel "
                      "other than the luminance for a grayscale image!");
                 return Customisation::Error::INVALID_VALUE;
             }
             break;
         default:
-            LOGE("Kernel::Histogram::setup(): Mixing channels from "
+            LOGE("Kernel::Engine::setup(): Mixing channels from "
                  "different color spaces!");
             return Customisation::Error::INVALID_VALUE;
             break;
@@ -249,14 +234,14 @@ Customisation::Error Histogram::setup() noexcept {
     
     /* Store the channels mode, number of selected channels and number of bins
      * in the common parameters */
-    config.histogram.mode    = mode;
-    config.histogram.entries = entries;
-    config.histogram.sizes   = bins;
+    config.mode    = mode;
+    config.entries = entries;
+    config.sizes   = bins;
     
-    if (config.histogram.sizes.size() < entries) {
-        LOGE("Kernel::Histogram::setup(): Only %d bins have been defined "
+    if (config.sizes.size() < entries) {
+        LOGE("Kernel::Engine::setup(): Only %d bins have been defined "
              "despite having %d channels selected!",
-             static_cast<int>(config.histogram.sizes.size()),
+             static_cast<int>(config.sizes.size()),
              static_cast<int>(entries));
         return Customisation::Error::INVALID_VALUE;
     }
@@ -266,23 +251,23 @@ Customisation::Error Histogram::setup() noexcept {
     std::vector<float> high = mask.high;
     
     if (low.size() < entries) {
-        LOGE("Kernel::Histogram::setup(): Only %d histogram ranges have "
+        LOGE("Kernel::Engine::setup(): Only %d histogram ranges have "
              "been defined despite having %d channels selected!",
              static_cast<int>(low.size()), static_cast<int>(entries));
         return Customisation::Error::INVALID_VALUE;
     }
 
     /* Store all ranges in the vector and build the configuration ranges */
-    config.histogram.ranges.clear();
-    config.histogram.storage.clear();
+    config.ranges.clear();
+    config.storage.clear();
     // to ensure the buffer is *always* valid
-    config.histogram.storage.reserve(low.size()*2);
+    config.storage.reserve(low.size()*2);
     auto high_it = high.begin();
     for (auto low_it = low.begin(); low_it != low.end(); ) {
-        config.histogram.storage.emplace_back(*low_it);
-        config.histogram.ranges.emplace_back(&config.histogram.storage.back());
+        config.storage.emplace_back(*low_it);
+        config.ranges.emplace_back(&config.storage.back());
         /* Upper side is exclusive */
-        config.histogram.storage.emplace_back(*high_it + 1); 
+        config.storage.emplace_back(*high_it + 1); 
         ++low_it;
         ++high_it;
     }
@@ -297,7 +282,7 @@ Customisation::Error Histogram::setup() noexcept {
     config.mask.valid = true;
     if (mode == Image::Mode::GRAY) {
         if (low.size() != 1) {
-            LOGE("Kernel::Histogram::setup(): Expected a single component "
+            LOGE("Kernel::Engine::setup(): Expected a single component "
                  "mask vector for gray image but have a %d-component vector!",
                  static_cast<int>(low.size()));
             return Customisation::Error::INVALID_VALUE;
@@ -306,7 +291,7 @@ Customisation::Error Histogram::setup() noexcept {
         config.mask.high = cv::Scalar(high[0]);
     } else {
         if (low.size() != 3) {
-            LOGE("Kernel::Histogram::setup(): Expected a 3-component mask "
+            LOGE("Kernel::Engine::setup(): Expected a 3-component mask "
                  "vector for colour image but have a %d-component vector!",
                  static_cast<int>(low.size()));
             return Customisation::Error::INVALID_VALUE;
@@ -315,22 +300,18 @@ Customisation::Error Histogram::setup() noexcept {
         config.mask.high = cv::Scalar(high[0], high[1], high[2]);
     }
 
+    return clear();
+}
+
+Customisation::Error Engine::clear() noexcept {
+    storage.clear();
     return Customisation::Error::NONE;
 }
 
-Histogram::Data &Histogram::data(View &view, const Zone &zone) noexcept {
-    auto key = zone.uuid;
-    auto it = tracked.find(key);
-
-    if (it == tracked.end()) {
-        auto p = tracked.emplace(std::piecewise_construct,
-                                 std::forward_as_tuple(key), 
-                                 std::forward_as_tuple(config, view, zone));
-        it = p.first;
-    }
-
-    return it->second;
+void Engine::prepare(const Zones &zs) noexcept {
+    Parent::prepare(zs, config);
 }
 
+}  // namespace Histogram
 }  // namespace Kernel
 }  // namespace VPP

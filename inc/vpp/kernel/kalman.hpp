@@ -61,10 +61,11 @@ class Context : public VPP::Kernel::Context, cv::KalmanFilter {
         /* Stack the predicted zone atop */
         void predict(const VPP::View &view, float dt) noexcept;
 
-        /* Use the zone atop for the correction of the bottom one and remove
-         * all zones in between. It does nothing if there is only one zone
+        /* Use the zone atop for the correction if there are at least threshold
+         * zones stacked. Usually two zones are mandatory for there must be
+         * one for prediction and one for setting the right output.
          * stacked */
-        void correct() noexcept;
+        void correct(unsigned int threshold = 2) noexcept;
 
     protected:
         float       validity;

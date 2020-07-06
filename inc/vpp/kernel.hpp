@@ -21,7 +21,7 @@
 #include <list>
 #include <vector>
 
-#include "customisation/entity.hpp"
+#include "customisation.hpp"
 #include "vpp/log.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/scene.hpp"
@@ -52,10 +52,31 @@ namespace Kernel {
             }
 
             inline Zone &stack(const Zone &zone) noexcept {
-                zones.emplace_back(std::move(zone.copy(copier)));
-                auto &z = zones.back();
-                z.tag   = 1;
-                return z;
+                zones.push_back(std::move(zone.copy(copier)));
+                return zones.back();
+            }
+            
+            inline void flatten() noexcept {
+                if (updated()) {
+                    /* Update from top to bottom, keeping all information */
+                    Zone latest = std::move(zones.back());
+                    zones.pop_back();
+                    latest.update(zones.back());
+                    zones.back() = std::move(latest);
+
+                    /* Loop again (in case) */
+                    flatten();
+                }
+            }
+
+            inline void merge(Context &newer) noexcept {
+                newer.flatten();
+                stack(newer.zone());
+                if (original == nullptr) {
+                    original = newer.original;
+                }
+                newer.zone().invalidate();
+                newer.original = nullptr;
             }
 
             inline const Zone &zone() const noexcept {
@@ -101,8 +122,18 @@ namespace Kernel {
 
             /* Default constructor and destructor */
             inline Engine(const Zone::Copier &c, unsigned int sz = 0) noexcept
-                : Customisation::Entity("Kernel"), zone_copier(c), 
-                  stack_size(sz) {}
+                : Customisation::Entity("Kernel"), zone_copier(c),
+                  stack_size(sz) {
+                recall.denominate("recall")
+                      .describe("The factor to apply to all predictions scores "
+                                "of all historic contexts")
+                      .characterise(Customisation::Trait::SETTABLE);
+                recall.range(0.0f, 1.0f);
+                Customisation::Entity::expose(recall);
+
+                /* Use the global zone recall by default */
+                recall = Zone::recall;
+            }
             inline ~Engine() = default;
 
             /* Kernels cannot be copied nor moved */
@@ -209,26 +240,52 @@ namespace Kernel {
                 storage.clear();
             }
 
-            inline void cleanup(std::vector<Zone> *added = nullptr, 
+            inline void cleanup(Scene &scene,
+                                std::vector<Zone> *added = nullptr, 
                                 std::vector<Zone> *removed = nullptr) 
                 noexcept {
                 for (auto it = storage.begin(); it != storage.end(); ) {
                     if (it->zone().invalid()) {
+                        if (it->original != nullptr) {
+                            it->original->invalidate();
+                        }
                         if (removed != nullptr) {
-                            removed->emplace_back(std::move(it->zone()));
+                            removed->push_back(std::move(it->zone()));
                         }
                         it = storage.erase(it);
                     } else {
+                        /* If there is already a zone attached to this one,
+                         * then update the original zone! */
+                        if (it->original != nullptr) {
+                            if (it->updated()) {
+                                it->flatten();
+                                auto z = it->zone().copy(zone_copier);
+                                /* Use the recall factor for the non-original
+                                 * predictions */
+                                it->original->update(z, recall);
+                            }
+                            /* Get the whole copy of the original zone here */
+                            it->zone() = *it->original;
+                        } else {
+                            it->flatten();
+                            scene.mark(it->zone());
+                        }
                         /* The original zone references pointer is useless 
                          * after the first pass */
                         it->original = nullptr;
                         ++it;
                         if (added != nullptr) {
-                            added->emplace_back(it->zone());
+                            added->push_back(static_cast<Zone>(it->zone()));
                         }
                     }
                 }
+                /* Remove invalid zones of scene (if any) */
+                scene.extract(Zone::when_invalid);
             }
+
+            /* Recall factor: the factor to apply to the prediction scores of
+             * the historic zones */
+            PARAMETER(Direct, Saturating, Immediate, float) recall;
 
         protected:
             const Zone::Copier &zone_copier;

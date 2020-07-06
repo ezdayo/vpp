@@ -87,10 +87,6 @@ class Scene final {
         std::vector<Zone> extract(const ZoneFilterDelegate &f) noexcept;
         std::vector<Zone> extract(const ZoneFilter &f) noexcept;
 
-        /* Append the valid zones of an other scene to this scene. The other
-         * scene is emptied */
-        void update(Scene &other) noexcept;
-
         /* Remembering a scene for tracking: everything is copied except the
          * images (useless) */
         Scene remember() const noexcept;

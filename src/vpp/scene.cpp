@@ -33,15 +33,16 @@ Zone &Scene::mark(Zone zone) noexcept {
     /* Crop the zone to prevent any issue and discard outside zones */
     static_cast<cv::Rect &>(zone) = zone & view.frame(); 
     if ((zone.width <= 0 ) || (zone.height <= 0)) {
-        invalid = std::move(zone.copy(Zone::Copy::BBoxOnly));
+        invalid = std::move(zone);
         invalid.invalidate();
         return invalid;
     }
 
-    zone.uuid = ++next_uuid;
-    /* Update the zone state contents */
-    zone.deproject(view);
-    zone.tag++;
+    if (zone.uuid == 0) {
+        zone.uuid = ++next_uuid;
+        /* Update the zone state contents */
+        zone.deproject(view);
+    }
 
     areas.emplace_back(std::move(zone));
 
@@ -134,19 +135,6 @@ std::vector<Zone> Scene::extract(const ZoneFilter &filter) noexcept {
 
     /* Copy elision */
     return exfiltered;
-}
-
-void Scene::update(Scene &other) noexcept {
-    for (auto it = other.areas.begin(); it != other.areas.end(); ) {
-        if (it->valid()) {
-            /* Crop the zone to prevent any issue and discard outside zones */
-            static_cast<cv::Rect &>(*it) = (*it) & view.frame(); 
-            if ((it->width > 0 ) && (it->height > 0)) {
-                areas.emplace_back(std::move(*it));
-            }
-        }
-        it = other.areas.erase(it);
-    }
 }
 
 Scene Scene::remember() const noexcept {

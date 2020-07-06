@@ -334,7 +334,7 @@ class Generic : public Parametrisable, public Measures {
 
         inline Matches extract(bool exclusive_dst = true, 
                                bool exclusive_src = true) const noexcept {
-            return extract(threshold, exclusive_dst, exclusive_src);
+            return Measures::extract(threshold, exclusive_dst, exclusive_src);
         }
 
         /* Source object reference */

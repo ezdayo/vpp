@@ -77,14 +77,9 @@ void Context::predict(const VPP::View &view, float dt) noexcept {
     }
 }
 
-void Context::correct() noexcept {
-    if (zones.size() > 1) {
-        cv::KalmanFilter::correct(zone(-1).state);
-        zone().state = std::move(zone(-1).state);
-        static_cast<cv::Rect &>(zone()) = 
-                                    std::move(static_cast<cv::Rect>(zone(-1)));
-        zones.erase(zones.begin()+1, zones.end());
-    
+void Context::correct(unsigned int threshold) noexcept {
+    if (zones.size() > threshold) {
+        cv::KalmanFilter::correct(static_cast<Zone::Measure>(zone(-1).state));
         validity = config.timeout;
     } 
 }

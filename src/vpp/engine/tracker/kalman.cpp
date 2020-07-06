@@ -24,7 +24,7 @@ namespace Tracker {
 
 Kalman::Kalman(Scene &history, std::mutex &synchro, std::vector<Zone> *added,
                std::vector<Zone> *removed) noexcept
-    : ForScene(), engine(Zone::Copy::All, 2),
+    : ForScene(), engine(Zone::Copy::Geometry, 2),
       prediction(VPP::Task::Kernel::Kalman::Prediction::Mode::Async*8, engine), 
       correction(VPP::Task::Kernel::Kalman::Correction::Mode::Async*8, engine),
       matcher(Matcher::Mode::Sync, Matcher::Mode::Async*8,
@@ -53,9 +53,8 @@ Customisation::Error Kalman::setup() noexcept {
 Error::Type Kalman::process(Scene &scene) noexcept {
     
     /* Add the new zones to the kalam trackers */
-    auto zones = std::move(scene.zones());
-    engine.prepare(zones);
-        
+    engine.prepare(scene.zones());
+
     /* Compute the delta time in seconds */
     auto dt_ms = scene.timestamp() - latest.timestamp();
     float dt_s = static_cast<float>(dt_ms) / 1000.0f;
@@ -75,6 +74,9 @@ Error::Type Kalman::process(Scene &scene) noexcept {
         return e;
     }
 
+    /* Get the matches */
+    auto matches = matcher.extract(true, true);
+
     /* Correct Kalman predictions as parallel tasks */
     correction.start(scene);
     e = correction.wait();
@@ -82,8 +84,9 @@ Error::Type Kalman::process(Scene &scene) noexcept {
         return e;
     }
 
+    /* Keep track of the changes! */
     std::lock_guard<std::mutex> lock(update);
-    engine.cleanup(entering, leaving);
+    engine.cleanup(scene, entering, leaving);
     latest = std::move(scene.remember());
     return Error::NONE;
 }

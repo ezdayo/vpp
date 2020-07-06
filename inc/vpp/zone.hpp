@@ -77,6 +77,9 @@ using Contour = std::vector<cv::Point>;
 using Contours = std::vector<std::reference_wrapper<Contour>>;
 using ConstContours = std::vector<std::reference_wrapper<const Contour>>;
 
+using ZoneFilter = 
+            std::function<bool (const Zone &) noexcept>;
+
 class Zone final : public BBox {
 
     public:
@@ -226,15 +229,16 @@ class Zone final : public BBox {
                 cv::Mat state;
         };
 
-        /* Universal unique identifier for a zone */
+        /* Universal unique identifier for a zone. Zone which are marked, i.e.
+         * have been attached to a scene have a strictly positive UUID */
         uint64_t                uuid;
 
+        /* State is updated when marked if UUID is nil */
         State                   state;
         Contour                 contour;
         std::vector<Prediction> predictions;
         Prediction              context;
         std::string             description;
-        int                     tag;
 
         Zone() noexcept = default;
 
@@ -246,33 +250,43 @@ class Zone final : public BBox {
         Zone& operator=(const Zone& other) = default;
         Zone& operator=(Zone&& other) = default;
 
-        /* Predictiions management */
-        Zone &predict(Prediction pred) noexcept;
-        Zone &predict(std::vector<Prediction> preds) noexcept;
+        /* Predictions management */
+        /* recall_f is a factor for mimicking the forgetting */
+        Zone &predict(Prediction pred, float recall_f) noexcept;
+        inline Zone &predict(Prediction pred) noexcept {
+            return predict(std::move(pred), 1.0);
+        }
+        
+        Zone &predict(std::vector<Prediction> preds, float recall_f) noexcept;
+
+        inline Zone &predict(std::vector<Prediction> preds) noexcept {
+            return predict(std::move(preds), 1.0);
+        }
 
         /* A handful of specific dedicated constructors */
-        Zone(BBox bbox) noexcept : BBox(std::move(bbox)), state(), contour(), 
-                                   predictions(), context(), description(),
-                                   tag(0) {}
+        Zone(BBox bbox) noexcept : BBox(std::move(bbox)), uuid(0), state(),
+                                   contour(), predictions(), context(),
+                                   description() {}
    
         Zone(BBox bbox, Prediction pred) noexcept
-            : BBox(std::move(bbox)), state(), contour(), predictions({ pred }),
-              context(std::move(pred)), description(), tag(0) {}
+            : BBox(std::move(bbox)), uuid(0), state(), contour(),
+              predictions({ pred }), context(std::move(pred)), description() {}
 
         Zone(BBox bbox, std::vector<Prediction> preds) noexcept
-            : BBox(std::move(bbox)), state(), contour(), description(), 
-            tag(0) {
+            : BBox(std::move(bbox)), uuid(0), state(), contour(),
+              description() {
             predict(std::move(preds));
         }
 
         Zone(BBox bbox, Contour c) noexcept 
-                : BBox(std::move(bbox)), state(), contour(std::move(c)),
-                  predictions(), context(), description(), tag(0) {}
+                : BBox(std::move(bbox)), uuid(0), state(),
+                  contour(std::move(c)), predictions(), context(), 
+                  description() {}
 
         Zone(Contour c) noexcept
-                : BBox(std::move(cv::boundingRect(c))), state(),
+                : BBox(std::move(cv::boundingRect(c))), uuid(0), state(),
                   contour(std::move(c)), predictions(), context(),
-                  description(), tag(0) {}
+                  description() {}
 
         void project(const View &view) noexcept;
         void deproject(const View &view) noexcept;
@@ -283,41 +297,39 @@ class Zone final : public BBox {
         class Copy {
             public:
                 static void BBoxOnly(Zone &/*o*/, const Zone &/*i*/) noexcept {}
-                static void UUID(Zone& out, const Zone &in) noexcept;
-                static void Geometries(Zone& out, const Zone &in) noexcept;
+                static void Geometry(Zone& out, const Zone &in) noexcept;
+                static void AllButContour(Zone& out, const Zone &in) noexcept;
                 static void All(Zone& out, const Zone &in) noexcept;
         };
 
         Zone copy(const Copier &copier = Copy::BBoxOnly) const noexcept {
             Zone out(static_cast<cv::Rect>(*this));
+            out.uuid  = uuid;
+            out.state = state;
+
             copier(out, *this);
             /* Relying on copy-elision here */
             return out;
         }
 
-        Zone &update(Zone &older) noexcept;
+        Zone &update(Zone &older, float recall_f) noexcept;
+        inline Zone &update(Zone &older) noexcept {
+            return update(older, 1.0);
+        }
 
         Zone &merge(const Zone &zone) noexcept;
         static Zone merge(const Zones &zones) noexcept;
        
         inline void invalidate() noexcept {
-            tag = -1;
-        }
-
-        inline int tagged() const noexcept {
-            if (tag > 0) {
-                return tag;
-            } else {
-                return 0;
-            }
+            uuid = 0;
         }
 
         inline bool valid() const noexcept {
-            return tag >= 0;
+            return uuid > 0;
         }
 
         inline bool invalid() const noexcept {
-            return tag < 0;
+            return uuid == 0;
         }
 
         static bool when_valid(const Zone &zone) noexcept {
@@ -336,6 +348,9 @@ class Zone final : public BBox {
         inline bool inside(Zone &other) const noexcept {
             return ((*this & other).area() > (area()*0.95));
         }
+
+        /* Recall factor when updating the predictions and zones */
+        static float recall;
 };
 
 class ZoneFilterDelegate {

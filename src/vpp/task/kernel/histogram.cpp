@@ -28,43 +28,53 @@ namespace Histogram {
 
 Initialiser::Initialiser(const int mode, 
                          VPP::Kernel::Histogram::Engine &e) noexcept
-    : Parent(mode), histogram(e) {}
+    : Parent(mode), contexts(), histogram(e) {}
 
-Error::Type Initialiser::start(Scene &s, Zones &zs) noexcept {
+Error::Type Initialiser::start(Scene &s, Zones &zs, 
+                               VPP::Kernel::Histogram::Contexts &ctx)
+    noexcept {
     /* Cache the right mode for the view and prepare the engine for the new
      * zones */
     s.view.cache(histogram.mode());
     histogram.prepare(zs);
-    /* Only consider the new (original) contexts */
-    auto contexts = std::move(histogram.contexts(histogram.original_contexts));
-    return Parent::start(contexts, s);
+    ctx = std::move(histogram.contexts(histogram.original_contexts));
+    return Parent::start(ctx, s);
 }
 
-Error::Type Initialiser::process(VPP::Kernel::Context &c, Scene &scn) noexcept {
-    
+Error::Type Initialiser::start(Scene &s, Zones &zs) noexcept {
+    return start(s, zs, contexts);
+}
+
+Error::Type Initialiser::process(VPP::Kernel::Histogram::Context &c, 
+                                 Scene &scn) noexcept {
     ASSERT(c.original != nullptr,
            "Task::Kernel::Histogram::Initialiser::process(): Cannot initialise "
            "old contexts");
-
-    histogram.context(c).initialise(scn.view);
+    c.initialise(scn.view);
 
     return Error::OK;
 }
 
 
 CamShift::CamShift(const int mode, VPP::Kernel::Histogram::Engine &e) noexcept
-    : Parent(mode), histogram(e), term() {}
+    : Parent(mode), contexts(), histogram(e), term() {}
 
-Error::Type CamShift::start(Scene &s) noexcept {
+Error::Type CamShift::start(Scene &s, 
+                            VPP::Kernel::Histogram::Contexts &ctx) noexcept {
     /* Cache the right mode for the view */
     s.view.cache(histogram.mode());
-    auto contexts = std::move(histogram.contexts(histogram.history_contexts));
-    return Parent::start(contexts, s);
+    return Parent::start(ctx, s);
 }
 
-Error::Type CamShift::process(VPP::Kernel::Context &c, Scene &scn) noexcept {
+Error::Type CamShift::start(Scene &s) noexcept {
+    contexts = std::move(histogram.contexts(histogram.history_contexts));
+    return start(s, contexts);
+}
+
+Error::Type CamShift::process(VPP::Kernel::Histogram::Context &c,
+                              Scene &scn) noexcept {
     if (c.zone().valid()) {
-        auto dest  = std::move(histogram.context(c).back_project(scn.view));
+        auto dest  = std::move(c.back_project(scn.view));
         cv::Rect estimated(c.zone());
         cv::CamShift(dest, estimated, term);
         auto &z = c.stack(Zone(estimated));

@@ -38,7 +38,7 @@ using VPP::Engine::Overlay::ZoneStyle;
 static void onScene(const Scene &scn, int error) {
     if (error) {
         LOGE("OOOPS! Error %d on scene '%08lx'! This shall never happen...",
-             error, scn.timestamp());
+             error, scn.ts_ms());
     } else {
         cv::imshow("detection", 
                    scn.view.cached(VPP::Image::Mode::BGR)->output());

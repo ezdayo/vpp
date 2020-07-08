@@ -45,12 +45,16 @@ class Initialiser
                              VPP::Kernel::Histogram::Engine &e) noexcept;
         ~Initialiser() noexcept = default;
 
+        Error::Type start(Scene &s, Zones &zs, 
+                          VPP::Kernel::Histogram::Contexts &ctx) noexcept;
         Error::Type start(Scene &s, Zones &zs) noexcept;
 
-        Error::Type process(VPP::Kernel::Context &c, Scene &s) noexcept;
+        Error::Type process(VPP::Kernel::Histogram::Context &c,
+                            Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Histogram::Engine &histogram;
+        VPP::Kernel::Histogram::Contexts contexts;
+        VPP::Kernel::Histogram::Engine & histogram;
 };
 
 class CamShift 
@@ -68,13 +72,17 @@ class CamShift
                           VPP::Kernel::Histogram::Engine &e) noexcept;
         ~CamShift() noexcept = default;
 
+        Error::Type start(Scene &s,
+                          VPP::Kernel::Histogram::Contexts &ctx) noexcept;
         Error::Type start(Scene &s) noexcept;
 
-        Error::Type process(VPP::Kernel::Context &c, Scene &scene) noexcept;
+        Error::Type process(VPP::Kernel::Histogram::Context &c,
+                            Scene &scene) noexcept;
 
     private:
-        VPP::Kernel::Histogram::Engine &histogram;
-        cv::TermCriteria                term;
+        VPP::Kernel::Histogram::Contexts contexts;
+        VPP::Kernel::Histogram::Engine & histogram;
+        cv::TermCriteria                 term;
 };
 
 }  // namespace Histogram

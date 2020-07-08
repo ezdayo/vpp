@@ -46,17 +46,14 @@ class Parameters : public cv::KalmanFilter {
 
 class Context : public VPP::Kernel::Context, cv::KalmanFilter {
     public:
-        explicit Context(Zone &zone, const Zone::Copier &copier,
+        explicit Context(Zone &zone, Zone::Copier &copier,
                          unsigned int sz, Parameters &params) noexcept;
         ~Context() noexcept = default;
 
         /* Initialising the Karman filter (resetting the filters) */ 
         void initialise() noexcept;
 
-        bool valid() const noexcept;
         float accuracy() const noexcept;
-
-        void invalidate() noexcept;
 
         /* Stack the predicted zone atop */
         void predict(const VPP::View &view, float dt) noexcept;
@@ -127,7 +124,7 @@ class Engine : public VPP::Kernel::Engine<Engine, Context> {
         PARAMETER(Direct, None, Immediate, std::vector<float>) R3;
         PARAMETER(Direct, None, Immediate, std::vector<float>) R4;
         
-        void prepare(const Zones &zs) noexcept;
+        void prepare(Zones &zs) noexcept;
                                    
     protected:
         Customisation::Error onPredictabilityUpdate(const float &t) noexcept;

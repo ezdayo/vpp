@@ -12,6 +12,8 @@
  *
  **/
 
+#include <chrono>
+#include <ctime>
 #include <vector>
 
 #include "vpp/log.hpp"
@@ -200,21 +202,22 @@ std::vector<uint16_t>
 
 View::View() noexcept 
     : depth(), c_bgr(nullptr), c_hsv(nullptr), c_yuv(nullptr), c_ycc(nullptr), 
-      c_gray(nullptr), boundaries(), images() {}
+      c_gray(nullptr), boundaries(), images(), ts(0) {}
 
 View::~View() noexcept = default;
 
 View::View(const View& other) noexcept
     : depth(other.depth), c_bgr(nullptr), c_hsv(nullptr), c_yuv(nullptr),
       c_ycc(nullptr), c_gray(nullptr), boundaries(other.boundaries),
-      images(other.images) {
+      images(other.images), ts(other.ts) {
     reshortcut();
 }
 
 View::View(View&& other) noexcept
     : depth(std::move(other.depth)), c_bgr(nullptr), c_hsv(nullptr),
     c_yuv(nullptr), c_ycc(nullptr), c_gray(nullptr), 
-    boundaries(std::move(other.boundaries)), images(std::move(other.images)) {
+    boundaries(std::move(other.boundaries)), images(std::move(other.images)), 
+    ts(std::move(other.ts)) {
     reshortcut();
 }
 
@@ -228,6 +231,7 @@ View& View::operator=(const View& other) noexcept {
         c_gray     = nullptr;
         boundaries = other.boundaries;
         images     = other.images;
+        ts         = other.ts;
         reshortcut();
     }
 
@@ -244,6 +248,7 @@ View& View::operator=(View&& other) noexcept {
         c_gray     = nullptr;
         boundaries = std::move(other.boundaries);
         images     = std::move(other.images);
+        ts         = std::move(other.ts);
         reshortcut();
     }
 
@@ -254,6 +259,14 @@ Error::Type View::use(cv::Mat data, Image::Mode mode) noexcept {
     ASSERT(mode.is_colour(),
            "View::Use::use(): Expecting a colour image but got a mode %d image "
            "instead!", static_cast<int>(mode));
+
+    /* Update the timestamp if none is set */
+    if (ts == 0) {
+        auto now = std::chrono::high_resolution_clock::now();
+        auto now_ms = 
+            std::chrono::time_point_cast<std::chrono::milliseconds>(now);
+        ts = now_ms.time_since_epoch().count();
+    }
 
     /* If there is already one such matrix, then we have a problem */
     auto it = images.find(mode);

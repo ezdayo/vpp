@@ -94,7 +94,8 @@ Error::Type OCV::process(Scene &scene) noexcept {
                 int classId = (int)(data[i + 1]) - 1; 
                 auto &zone = scene.mark(cv::Rect_<float>(data[i+3], data[i+4],
                                                          data[i+5], data[i+6]));
-                zone.predict(Prediction(confidence, dataset.ID(), classId));
+                zone.predict(std::move(Prediction(confidence, dataset.ID(),
+                                                  classId)));
                 zone.description = label(zone);
             }
         }
@@ -135,9 +136,10 @@ Error::Type OCV::process(Scene &scene) noexcept {
                 cv::Rect box = boxes[idx];
                 
                 auto &zone = 
-                    scene.mark(box).predict(Prediction(confidences[idx], 
+                    scene.mark(box)
+                         .predict(std::move(Prediction(confidences[idx], 
                                                        dataset.ID(), 
-                                                       classIds[idx]));
+                                                       classIds[idx])));
                 zone.description = label(zone);
             }
         } else {
@@ -145,9 +147,10 @@ Error::Type OCV::process(Scene &scene) noexcept {
                 cv::Rect box = boxes[idx];
                 
                 auto &zone = 
-                    scene.mark(box).predict(Prediction(confidences[idx], 
+                    scene.mark(box)
+                         .predict(std::move(Prediction(confidences[idx], 
                                                        dataset.ID(), 
-                                                       classIds[idx]));
+                                                       classIds[idx])));
                 zone.description = label(zone);
             }
         }

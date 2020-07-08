@@ -170,6 +170,7 @@ set(LIB_FILES ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/edging.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/ocr/reader.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/overlay.cpp
+	       ${PROJECT_SOURCE_DIR}/src/vpp/stage/tracker.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/blur.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/clustering.cpp
 	       ${PROJECT_SOURCE_DIR}/src/vpp/task/edging.cpp
@@ -224,6 +225,7 @@ if(VPP_HAS_TRACKING_SUPPORT)
 	set(LIB_FILES ${LIB_FILES}
 	              ${PROJECT_SOURCE_DIR}/src/vpp/kernel/histogram.cpp
 	              ${PROJECT_SOURCE_DIR}/src/vpp/kernel/kalman.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/camshift.cpp
 		      ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/kalman.cpp
 		      ${PROJECT_SOURCE_DIR}/src/vpp/task/kernel/histogram.cpp
 		      ${PROJECT_SOURCE_DIR}/src/vpp/task/kernel/kalman.cpp)

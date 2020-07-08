@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <list>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <vector>
@@ -67,6 +68,16 @@ class BBox : public cv::Rect {
         BBox(float left, float top, float right, float bottom,
              const cv::Mat &image) noexcept
             : BBox(left, top, right, bottom, image.cols, image.rows) {}
+
+        float iou(const BBox &other) const noexcept {
+            auto top = static_cast<float>((*this & other).area());
+            if (top == 0) {
+                return 0;
+            }
+            auto bot = static_cast<float>((*this | other).area());
+
+            return top / bot;
+        }
 };
 
 /** Zone of interest type */
@@ -236,7 +247,7 @@ class Zone final : public BBox {
         /* State is updated when marked if UUID is nil */
         State                   state;
         Contour                 contour;
-        std::vector<Prediction> predictions;
+        std::list<Prediction>   predictions;
         Prediction              context;
         std::string             description;
 
@@ -257,9 +268,9 @@ class Zone final : public BBox {
             return predict(std::move(pred), 1.0);
         }
         
-        Zone &predict(std::vector<Prediction> preds, float recall_f) noexcept;
+        Zone &predict(std::list<Prediction> preds, float recall_f) noexcept;
 
-        inline Zone &predict(std::vector<Prediction> preds) noexcept {
+        inline Zone &predict(std::list<Prediction> preds) noexcept {
             return predict(std::move(preds), 1.0);
         }
 
@@ -272,7 +283,7 @@ class Zone final : public BBox {
             : BBox(std::move(bbox)), uuid(0), state(), contour(),
               predictions({ pred }), context(std::move(pred)), description() {}
 
-        Zone(BBox bbox, std::vector<Prediction> preds) noexcept
+        Zone(BBox bbox, std::list<Prediction> preds) noexcept
             : BBox(std::move(bbox)), uuid(0), state(), contour(),
               description() {
             predict(std::move(preds));

@@ -110,15 +110,16 @@ template <typename T, typename X, typename Y, typename ...E>
 /* Describing parallel tasks operating on bidimentional tiles in a scene */
 template <typename T> 
 class Tiled : public Parametrisable, 
-              public Util::Tasks::Core<T, Scene &, cv::Rect, cv::Rect &> {
+              public Util::Tasks::Core<T, Scene &, cv::Rect> {
     public:
-        using Parent = Util::Tasks::Core<T, Scene &, cv::Rect, cv::Rect &>;
+        using Parent = Util::Tasks::Core<T, Scene &, cv::Rect>;
         using typename Parent::Mode;
         using Parent::next;
         using Parent::wait;
 
         inline explicit Tiled(const int mode) noexcept 
-            : Customisation::Entity("Tasks"), Parent(mode) {
+            : Customisation::Entity("Tasks"), Parent(mode), frame(), it(),
+              tiles_total(0) {
             tile.denominate("tile")
                 .describe("The tile geometry to use for the processing");
             expose(tile);
@@ -138,11 +139,12 @@ class Tiled : public Parametrisable,
  
         inline ~Tiled() noexcept = default;
         
-        inline Error::Type start(Scene &s, cv::Rect &frame) noexcept {
+        inline Error::Type start(Scene &s, cv::Rect f) noexcept {
+            frame        = std::move(f);
             it           = cv::Rect(frame.tl(), static_cast<cv::Size>(tile));
-            cv::Rect roi(it);
             tiles_total  = 0;
-            return Parent::start(s, roi, frame);
+            cv::Rect roi(it);
+            return Parent::start(s, roi);
         }
 
         Tile   tile;
@@ -150,8 +152,7 @@ class Tiled : public Parametrisable,
 
     protected:
         /** Iterator to do things in parallel */
-        inline bool next(Scene& /*s*/, cv::Rect &roi,
-                         cv::Rect &frame) noexcept {
+        inline bool next(Scene& /*s*/, cv::Rect &roi) noexcept {
             if (frame.contains(it.tl())) {
                 roi = it;
                 ++ tiles_total;
@@ -169,17 +170,13 @@ class Tiled : public Parametrisable,
         }
         
         /** Do the actual tiled scene processing */
-        inline Error::Type process(Scene& s, cv::Rect &r,
-                                   cv::Rect &/*f*/) noexcept {
-            return static_cast<T*>(this)->process(s, r);
-        }
-
         inline Error::Type process(Scene& /*s*/, cv::Rect &/*roi*/) noexcept {
             LOGE("%s[%s]::process(): Process shall be redefined in child "
                  "classes!", value_to_string().c_str(), name().c_str());
             return Error::NOT_EXISTING;
         }
 
+        cv::Rect frame;
         cv::Rect it;
         int      tiles_total;
 };

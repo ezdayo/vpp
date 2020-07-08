@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <list>
 #include <opencv2/core/core.hpp>
 #include <vector>
 
@@ -47,8 +48,8 @@ class Scene final {
         Scene& operator=(const Scene& other) = delete;
         Scene& operator=(Scene&& other) = default;
 
-        inline uint64_t timestamp() const noexcept {
-            return ts;
+        inline uint64_t ts_ms() const noexcept {
+            return view.ts_ms();
         }
 
         inline bool broken() const noexcept {
@@ -84,8 +85,8 @@ class Scene final {
         Zones zones(const ZoneFilter &f) noexcept;
         ConstZones zones(const ZoneFilter &f) const noexcept;
 
-        std::vector<Zone> extract(const ZoneFilterDelegate &f) noexcept;
-        std::vector<Zone> extract(const ZoneFilter &f) noexcept;
+        std::list<Zone> extract(const ZoneFilterDelegate &f) noexcept;
+        std::list<Zone> extract(const ZoneFilter &f) noexcept;
 
         /* Remembering a scene for tracking: everything is copied except the
          * images (useless) */
@@ -95,8 +96,10 @@ class Scene final {
         View view;
 
     private:
-        std::vector<Zone> areas;
-        uint64_t          ts;
+        /* Using a double-linked list to ensure that zones keep their actual
+         * locations unless removed from the scene, including when other zones
+         * are appended or removed */
+        std::list<Zone> areas;
 };
 
 }  // namespace VPP

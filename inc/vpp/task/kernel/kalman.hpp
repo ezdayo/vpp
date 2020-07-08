@@ -45,14 +45,17 @@ class Prediction
                             VPP::Kernel::Kalman::Engine &e) noexcept;
         virtual ~Prediction() noexcept = default;
  
+        Error::Type start(Scene &s, float dt,
+                          VPP::Kernel::Kalman::Contexts &ctx) noexcept;
         Error::Type start(Scene &s, float dt) noexcept;
         Error::Type wait() noexcept;
 
-        Error::Type process(VPP::Kernel::Context &c, Scene &s) noexcept;
+        Error::Type process(VPP::Kernel::Kalman::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Kalman::Engine &kalman;
-        float                        dt;
+        VPP::Kernel::Kalman::Contexts contexts;
+        VPP::Kernel::Kalman::Engine & kalman;
+        float                         dt;
 };
 
 class Correction 
@@ -70,12 +73,15 @@ class Correction
                             VPP::Kernel::Kalman::Engine &e) noexcept;
         virtual ~Correction() noexcept = default;
  
+        Error::Type start(Scene &s,
+                          VPP::Kernel::Kalman::Contexts &ctx) noexcept;
         Error::Type start(Scene &s) noexcept;
 
-        Error::Type process(VPP::Kernel::Context &c, Scene &s) noexcept;
+        Error::Type process(VPP::Kernel::Kalman::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Kalman::Engine &kalman;
+        VPP::Kernel::Kalman::Contexts contexts;
+        VPP::Kernel::Kalman::Engine & kalman;
 };
 
 

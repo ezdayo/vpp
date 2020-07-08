@@ -52,7 +52,7 @@ struct Parameters {
 
 class Context : public VPP::Kernel::Context {
     public:
-        explicit Context(Zone &zone, const Zone::Copier &copier,
+        explicit Context(Zone &zone, Zone::Copier &copier,
                          unsigned int sz, Parameters &params) noexcept;
         ~Context() noexcept = default;
 
@@ -107,7 +107,7 @@ class Engine : public VPP::Kernel::Engine<Engine, Context> {
         Ranges                                                         ranges;
         PARAMETER(Direct, Saturating, Immediate, std::vector<int32_t>) bins;
 
-        void prepare(const Zones &zs) noexcept;
+        void prepare(Zones &zs) noexcept;
 
         Image::Mode mode() const noexcept {
             return config.mode;

@@ -27,14 +27,19 @@ namespace Kalman {
 Prediction::Prediction(const int mode, VPP::Kernel::Kalman::Engine &e) noexcept
     : Parent(mode), kalman(e), dt(0) {}
 
-Error::Type Prediction::start(Scene &s, float dt) noexcept {
+Error::Type 
+    Prediction::start(Scene &s, float dt,
+                      VPP::Kernel::Kalman::Contexts &ctx) noexcept {
     this->dt = dt;
     if (dt <= 0) {
         return Error::OK;
     }
+    return Parent::start(ctx, s);
+}
 
-    auto contexts = std::move(kalman.contexts(kalman.history_contexts));
-    return Parent::start(contexts, s);
+Error::Type Prediction::start(Scene &s, float dt) noexcept {
+    contexts = std::move(kalman.contexts(kalman.history_contexts));
+    return start(s, dt, contexts);
 }
 
 Error::Type Prediction::wait() noexcept {
@@ -45,22 +50,28 @@ Error::Type Prediction::wait() noexcept {
     return Parent::wait();
 }
 
-Error::Type Prediction::process(VPP::Kernel::Context &c, Scene &scn) noexcept {
-    kalman.context(c).predict(scn.view, dt);
+Error::Type Prediction::process(VPP::Kernel::Kalman::Context &c, 
+                                Scene &scn) noexcept {
+    c.predict(scn.view, dt);
     return Error::OK;
 }
 
 Correction::Correction(const int mode, VPP::Kernel::Kalman::Engine &e) noexcept
     : Parent(mode), kalman(e) {}
 
-Error::Type Correction::start(Scene &s) noexcept {
-    auto contexts = std::move(kalman.contexts(kalman.history_contexts));
-    return Parent::start(contexts, s);
+Error::Type 
+    Correction::start(Scene &s, VPP::Kernel::Kalman::Contexts &ctx) noexcept {
+    return Parent::start(ctx, s);
 }
 
-Error::Type Correction::process(VPP::Kernel::Context &c, 
+Error::Type Correction::start(Scene &s) noexcept {
+    contexts = std::move(kalman.contexts(kalman.history_contexts));
+    return start(s, contexts);
+}
+
+Error::Type Correction::process(VPP::Kernel::Kalman::Context &c, 
                                 Scene &/*s*/) noexcept {
-    kalman.context(c).correct();
+    c.correct();
     return Error::OK;
 }
 

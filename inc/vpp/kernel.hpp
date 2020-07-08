@@ -31,7 +31,7 @@ namespace Kernel {
 
     class Context {
         public:
-            inline Context(Zone &o, const Zone::Copier &c, unsigned int sz = 0) 
+            inline Context(Zone &o, Zone::Copier &c, unsigned int sz = 0) 
                 noexcept : original(&o), copier(c), zones() {
                 zones.reserve(sz);
                 stack(o);
@@ -42,6 +42,14 @@ namespace Kernel {
             inline Context(Context&& other) = default;
             inline Context& operator=(const Context& other) = delete;
             inline Context& operator=(Context&& other) = delete;
+
+            inline bool valid() const noexcept {
+                return (zones.size() > 0) && (zones.front().valid());
+            }
+
+            inline bool invalid() const noexcept {
+                return (!valid());
+            }
 
             inline bool updated() const noexcept {
                 return zones.size() > 1;
@@ -55,7 +63,14 @@ namespace Kernel {
                 zones.push_back(std::move(zone.copy(copier)));
                 return zones.back();
             }
-            
+           
+            inline void invalidate() noexcept {
+                if (valid()) {
+                    zones.front().invalidate();
+                    original = nullptr;
+                }
+            }
+
             inline void flatten() noexcept {
                 if (updated()) {
                     /* Update from top to bottom, keeping all information */
@@ -75,8 +90,7 @@ namespace Kernel {
                 if (original == nullptr) {
                     original = newer.original;
                 }
-                newer.zone().invalidate();
-                newer.original = nullptr;
+                newer.invalidate();
             }
 
             inline const Zone &zone() const noexcept {
@@ -104,11 +118,11 @@ namespace Kernel {
                 return zones[offset_of(offset)];
             }
 
-            Zone *              original;
-            const Zone::Copier& copier;
+            Zone *            original;
+            Zone::Copier&     copier;
 
         protected:
-            std::vector<Zone>   zones;
+            std::vector<Zone> zones;
     };
     
     using Contexts = std::vector<std::reference_wrapper<Context>>;
@@ -121,8 +135,8 @@ namespace Kernel {
             using Contexts = std::vector<std::reference_wrapper<C>>;
 
             /* Default constructor and destructor */
-            inline Engine(const Zone::Copier &c, unsigned int sz = 0) noexcept
-                : Customisation::Entity("Kernel"), zone_copier(c),
+            inline Engine(Zone::Copier c, unsigned int sz = 0) noexcept
+                : Customisation::Entity("Kernel"), zone_copier(std::move(c)),
                   stack_size(sz) {
                 recall.denominate("recall")
                       .describe("The factor to apply to all predictions scores "
@@ -155,11 +169,11 @@ namespace Kernel {
             }
 
             static inline bool valid_contexts(const C& c) noexcept {
-                return c.zone().valid();
+                return c.valid();
             }
 
             static inline bool invalid_contexts(const C& c) noexcept {
-                return !c.zone().valid();
+                return !c.valid();
             }
 
             static inline bool original_contexts(const C& c) noexcept {
@@ -230,9 +244,10 @@ namespace Kernel {
 
             /* Preparing kernel contexts for new zones */
             template <typename ...Args> 
-                inline void prepare(const Zones &zs, Args&... a) noexcept {
-                for (auto const &z : zs) {
-                    storage.emplace_back(z, zone_copier, stack_size, a...);
+                inline void prepare(Zones &zs, Args&... a) noexcept {
+                for (auto z : zs) {
+                    storage.emplace_back(static_cast<Zone &>(z), zone_copier, 
+                                         stack_size, a...);
                 }
             }
 
@@ -245,7 +260,7 @@ namespace Kernel {
                                 std::vector<Zone> *removed = nullptr) 
                 noexcept {
                 for (auto it = storage.begin(); it != storage.end(); ) {
-                    if (it->zone().invalid()) {
+                    if (it->invalid()) {
                         if (it->original != nullptr) {
                             it->original->invalidate();
                         }
@@ -273,14 +288,18 @@ namespace Kernel {
                         /* The original zone references pointer is useless 
                          * after the first pass */
                         it->original = nullptr;
-                        ++it;
                         if (added != nullptr) {
                             added->push_back(static_cast<Zone>(it->zone()));
                         }
+                        ++it;
                     }
                 }
                 /* Remove invalid zones of scene (if any) */
                 scene.extract(Zone::when_invalid);
+                for (auto &w : scene.zones()) {
+                    Zone &z=w;
+                    z.description = std::move(std::to_string(z.uuid));
+                }
             }
 
             /* Recall factor: the factor to apply to the prediction scores of
@@ -288,9 +307,9 @@ namespace Kernel {
             PARAMETER(Direct, Saturating, Immediate, float) recall;
 
         protected:
-            const Zone::Copier &zone_copier;
-            const unsigned int  stack_size;
-            std::list<C>        storage;
+            Zone::Copier       zone_copier;
+            const unsigned int stack_size;
+            std::list<C>       storage;
     };
 
 }  // namespace Kernel

@@ -102,8 +102,8 @@ template <typename T, typename ...E> class Single : public Core {
              * reference. It is not possible to do the same in the lambda
              * function call, as the lambda does not have an explicit signature.
              */
-            return Core::start([this, &e...] { 
-                return dispatch(e...); });
+            return Core::start(std::move([this, &e...] { 
+                return dispatch(e...); }));
         }
 
     protected:
@@ -196,29 +196,39 @@ template <typename T, typename ...E> class Core : public Util::Task::Core {
  * This class manages containers of reference_wrappers as if they were 
  * standard (plain) containers */
 template <typename T, typename L, typename ...E> 
-    class List : public Core<T, containee_object_t<L>*, L, E...> {
+    class List : public Core<T, containee_object_t<L>*, E...> {
     public:
         using O = containee_object_t<L>;
-        using Parent = Core<T, O*, L, E...>;
+        using Parent = Core<T, O*, E...>;
         using typename Parent::Mode;
-        using Parent::wait;
-        using Parent::process;
 
         inline explicit List(const int mode) noexcept 
-            : Parent(mode), synchro() {}
+            : Parent(mode), synchro(), list(), it() {}
         inline ~List() noexcept = default;
 
         /** Start processing the environment */
-        inline int start(L& l, E&... e) noexcept {
+        inline int start(L l, E&... e) noexcept {
+            list = std::move(storable_wrapper_t<L>(l));
+            if (list.empty()) {
+                return 0;
+            }
             O *o = nullptr;
-            it = l.begin(); 
-            return Parent::start(o, l, e...);
+            it = list.begin();
+            return Parent::start(o, e...);
+        }
+        
+        /** Wait for the processing to be done */
+        inline int wait() noexcept {
+            if (list.empty()) {
+                return 0;
+            }
+            return Parent::wait();
         }
 
     protected:
         /** Iterator to do things in parallel */
-        inline bool next(O* &o, L& l, E&... /*e*/) noexcept {
-            if (it == l.end()) {
+        inline bool next(O* &o, E&... /*e*/) noexcept {
+            if (it == list.end()) {
                 return false;
             }
             /* The cast to O& does nothing with standard containee objects, but
@@ -228,8 +238,8 @@ template <typename T, typename L, typename ...E>
             return true;
         }
 
-        /* The internal process call is calling the final object processing */ 
-        inline int process(O* &o, L& /*l*/, E&... e) noexcept {
+        /* This is a wrapper for the actual processing function */
+        inline int process(O* o, E&... e) noexcept {
             return static_cast<T*>(this)->process(*o, e...);
         }
 
@@ -243,57 +253,69 @@ template <typename T, typename L, typename ...E>
         }
 
         /** Mutex for synchronising access between tasks */
-        std::mutex    synchro;
+        std::mutex            synchro;
 
         /** Iterator on the list of tasks */
-        Util::iterator_t<L> it;
+        storable_wrapper_t<L> list;
+        Util::iterator_t<L>   it;
 };
 
 /* Tasks lists are only relevant when the X and Y types are containers! 
  * This class manages containers of reference_wrappers as if they were 
  * standard (plain) containers */
 template <typename T, typename X, typename Y, typename ...E> 
-    class Lists : public Core<T, containee_object_t<X>*, X, 
-                              containee_object_t<Y>*, Y,  E...> {
+    class Lists : public Core<T, containee_object_t<X>*, 
+                              containee_object_t<Y>*, E...> {
     public:
         using XO = containee_object_t<X>;
         using YO = containee_object_t<Y>;
-        using Parent = Core<T, XO*, X, YO*, Y, E...>;
+        using Parent = Core<T, XO*, YO*, E...>;
         using typename Parent::Mode;
-        using Parent::wait;
-        using Parent::process;
 
         inline explicit Lists(const int mode) noexcept 
-            : Parent(mode), synchro() {}
+            : Parent(mode), synchro(), xlist(), ylist(), xit(), yit() {}
         inline ~Lists() noexcept = default;
 
         /** Start processing the environment */
-        inline int start(X& x, Y& y, E&... e) noexcept {
+        inline int start(X x, Y y, E&... e) noexcept {
+            xlist = std::move(storable_wrapper_t<X>(x));
+            ylist = std::move(storable_wrapper_t<Y>(y));
+            if (xlist.empty() || ylist.empty()) {
+                return 0;
+            }
             XO *xo = nullptr;
             YO *yo = nullptr;
-            xit = x.begin(); 
-            yit = x.begin(); 
-            return Parent::start(xo, x, yo, y, e...);
+            xit = xlist.begin(); 
+            yit = ylist.begin(); 
+            return Parent::start(xo, yo, e...);
+        }
+
+        /** Wait for the processing to be done */
+        inline int wait() noexcept {
+            if (xlist.empty() || ylist.empty()) {
+                return 0;
+            }
+            return Parent::wait();
         }
 
     protected:
         /** Iterator to do things in parallel */
-        inline bool next(XO* &xo, X& x, YO* &yo, Y& y, E&... /*e*/) noexcept {
-            if ((xit == x.end()) && (yit == y.end())) {
+        inline bool next(XO* &xo, YO* &yo, E&... /*e*/) noexcept {
+            if ((xit == xlist.end()) && (yit == ylist.end())) {
                 return false;
             }
 
             /* The cast to O& does nothing with standard containee objects, but
              * it does de-reference a reference-wrapped object */
-            if (yit != y.end()) {
+            if (yit != ylist.end()) {
                 xo = &(static_cast<XO&>(*xit));
                 yo = &(static_cast<YO&>(*yit));
                 ++yit;
                 return true;
             }
-            yit = y.begin();
+            yit = ylist.begin();
             ++xit;
-            if (xit != x.end()) {
+            if (xit != xlist.end()) {
                 xo = &(static_cast<XO&>(*xit));
                 yo = &(static_cast<YO&>(*yit));
                 return true;
@@ -301,9 +323,8 @@ template <typename T, typename X, typename Y, typename ...E>
             return false;
         }
 
-        /* The internal process call is calling the final object processing */ 
-        inline int process(XO* &xo, X& /*x*/, YO* &yo, Y& /*y*/, E&... e) 
-            noexcept {
+        /** This is a wrapper for the actual processing function */
+        inline int process(XO* xo, YO* yo, E&... e) noexcept {
             return static_cast<T*>(this)->process(*xo, *yo, e...);
         }
 
@@ -317,11 +338,13 @@ template <typename T, typename X, typename Y, typename ...E>
         }
 
         /** Mutex for synchronising access between tasks */
-        std::mutex    synchro;
+        std::mutex            synchro;
 
         /** Iterators on the lists of tasks */
-        Util::iterator_t<X> xit;
-        Util::iterator_t<Y> yit;
+        storable_wrapper_t<X> xlist;
+        storable_wrapper_t<Y> ylist;
+        Util::iterator_t<X>   xit;
+        Util::iterator_t<Y>   yit;
 };
 
 }  // namespace Tasks

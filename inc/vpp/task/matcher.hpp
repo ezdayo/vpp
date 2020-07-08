@@ -22,12 +22,15 @@
 #pragma once
 
 #include <opencv2/core/mat.hpp>
+#include <unordered_map>
+
 #include "vpp/task.hpp"
 
 namespace VPP {
 namespace Task {
 namespace Matcher {
 using Util::containee_object_t;
+using Util::storable_wrapper_t;
 
 namespace Estimator {
 
@@ -37,9 +40,9 @@ template <typename Src, typename Dst>
                                containee_object_t<Dst>&) noexcept>;
 
 template <typename Src, typename Dst>
-class Single : public VPP::Task::Single<Single<Src, Dst>, Src, Dst, float *> {
+class Single : public VPP::Task::Single<Single<Src, Dst>> {
     public:
-        using Parent = VPP::Task::Single<Single<Src, Dst>, Src, Dst, float *>;
+        using Parent = VPP::Task::Single<Single<Src, Dst>>;
         using typename Parent::Mode;
         using Parent::process;
         using Parent::start;
@@ -48,21 +51,24 @@ class Single : public VPP::Task::Single<Single<Src, Dst>, Src, Dst, float *> {
             : Parent(mode) {}
         inline ~Single() = default;
 
-        inline Error::Type start(Src &src, Dst &dst, cv::Mat &results, 
+        inline Error::Type start(Src s, Dst d, cv::Mat &results, 
                                  Measure<Src, Dst> evaluator) noexcept {
             /* Preallocate the results matrix to allow parallel computation and
              * to ensure that it is fully contiguous in memory */ 
-            results = std::move(cv::Mat(src.size(), dst.size(), CV_32F));
-            float *scores = results.ptr<float>();
+            results = std::move(cv::Mat(s.size(), d.size(), CV_32F));
             measure = std::move(evaluator);
-            return Parent::start(src, dst, scores);
+            src     = std::move(storable_wrapper_t<Src>(s));
+            dst     = std::move(storable_wrapper_t<Dst>(d));
+            scores  = results.ptr<float>();
+            return Parent::start();
         }
 
-        inline Error::Type process(Src& s, Dst& d, float *&r) noexcept {
-            for (auto &src : s) {
-                for (auto &dst : d) {
-                    *r ++ = measure(static_cast<containee_object_t<Src>&>(src),
-                                    static_cast<containee_object_t<Dst>&>(dst));
+        inline Error::Type process() noexcept {
+            float *r = scores;
+            for (auto &s : src) {
+                for (auto &d : dst) {
+                    *r ++ = measure(static_cast<containee_object_t<Src>&>(s),
+                                    static_cast<containee_object_t<Dst>&>(d));
                 }
             }
 
@@ -70,13 +76,16 @@ class Single : public VPP::Task::Single<Single<Src, Dst>, Src, Dst, float *> {
         }
 
     protected:
-        Measure<Src, Dst> measure;
+        Measure<Src, Dst>       measure;
+        storable_wrapper_t<Src> src;
+        storable_wrapper_t<Dst> dst;
+        float *                 scores;
 };
 
 template <typename Src, typename Dst>
-class List : public VPP::Tasks::List<List<Src, Dst>, Src, Dst, float *> {
+class List : public VPP::Tasks::List<List<Src, Dst>, Src, float *> {
     public:
-        using Parent = VPP::Tasks::List<List<Src, Dst>, Src, Dst, float *>;
+        using Parent = VPP::Tasks::List<List<Src, Dst>, Src, float *>;
         using typename Parent::Mode;
         using Parent::process;
         using Parent::start;
@@ -85,36 +94,36 @@ class List : public VPP::Tasks::List<List<Src, Dst>, Src, Dst, float *> {
             : Parent(mode) {}
         inline ~List() = default;
 
-        inline Error::Type start(Src &src, Dst &dst, cv::Mat &results, 
+        inline Error::Type start(Src s, Dst d, cv::Mat &results, 
                                  Measure<Src, Dst> evaluator) noexcept {
             /* Preallocate the results matrix to allow parallel computation and
              * to ensure that it is fully contiguous in memory */ 
-            results = std::move(cv::Mat(src.size(), dst.size(), CV_32F));
-            scores = results.ptr<float>();
+            results = std::move(cv::Mat(s.size(), d.size(), CV_32F));
             measure = std::move(evaluator);
-            return Parent::start(src, dst, scores);
+            dst     = std::move(storable_wrapper_t<Dst>(d));
+            scores  = results.ptr<float>();
+            return Parent::start(s, scores);
         }
 
-        inline bool next(containee_object_t<Src>* &src, Src &s, 
-                         Dst &d, float *&r) noexcept {
+        inline bool next(containee_object_t<Src>* &s, float *&r) noexcept {
             r       = scores;
-            scores += d.size();
-            return Parent::next(src, s, d, r);
+            scores += dst.size();
+            return Parent::next(s, r);
         }
 
-        inline Error::Type process(containee_object_t<Src> &src,
-                                   Dst& d, float *&r) noexcept {
-            for (auto &dst : d) {
-                *r ++ = measure(src,
-                                static_cast<containee_object_t<Dst>&>(dst));
+        inline Error::Type process(containee_object_t<Src> &s,
+                                   float *&r) noexcept {
+            for (auto &d : dst) {
+                *r ++ = measure(s, static_cast<containee_object_t<Dst>&>(d));
             }
 
             return Error::OK;
         }
 
     protected:
-        Measure<Src, Dst> measure;
-        float *           scores;
+        Measure<Src, Dst>       measure;
+        storable_wrapper_t<Dst> dst;
+        float *                 scores;
 };
 
 template <typename Src, typename Dst>
@@ -129,27 +138,27 @@ class Lists : public VPP::Tasks::Lists<Lists<Src, Dst>, Src, Dst, float *> {
             : Parent(mode) {}
         inline ~Lists() = default;
 
-        inline Error::Type start(Src &src, Dst &dst, cv::Mat &results, 
+        inline Error::Type start(Src s, Dst d, cv::Mat &results, 
                                  Measure<Src, Dst> evaluator) noexcept {
             /* Preallocate the results matrix to allow parallel computation and
              * to ensure that it is fully contiguous in memory */ 
-            results = std::move(cv::Mat(src.size(), dst.size(), CV_32F));
-            scores  = results.ptr<float>();
+            results = std::move(cv::Mat(s.size(), d.size(), CV_32F));
             measure = std::move(evaluator);
-            return Parent::start(src, dst, scores);
+            scores  = results.ptr<float>();
+            return Parent::start(s, d, scores);
         }
 
-        inline bool next(containee_object_t<Src>* &src, Src &s, 
-                         containee_object_t<Dst>* &dst, Dst &d, 
+        inline bool next(containee_object_t<Src>* &s,
+                         containee_object_t<Dst>* &d, 
                          float *&r) noexcept {
             r = scores++;
-            return Parent::next(src, s, dst, d, r);
+            return Parent::next(s, d, r);
         }
 
-        inline Error::Type process(containee_object_t<Src> &src,
-                                   containee_object_t<Dst> &dst, 
+        inline Error::Type process(containee_object_t<Src> &s,
+                                   containee_object_t<Dst> &d, 
                                    float *&r) noexcept {
-                *r = measure(src, dst);
+                *r = measure(s, d);
 
             return Error::OK;
         }
@@ -201,18 +210,26 @@ class Any : public Parametrisable {
         Any& operator=(const Any& other) = delete;
         Any& operator=(Any&& other) = delete;
 
-        inline Error::Type start(Src &src, Dst &dst, cv::Mat &results, 
+        inline Error::Type start(Src s, Dst d, cv::Mat &results, 
                                  Measure<Src, Dst> evaluator) noexcept {
             switch(granularity) {
                 case static_cast<int>(Granularity::MEASURE):
-                    return lists.start(src, dst, results, std::move(evaluator));
+                    return lists.start(std::forward<Src>(s),
+                                       std::forward<Dst>(d), 
+                                       std::forward<cv::Mat&>(results), 
+                                       std::move(evaluator));
                     break;
                 case static_cast<int>(Granularity::ROW):
-                    return list.start(src, dst, results, std::move(evaluator));
+                    return list.start(std::forward<Src>(s),
+                                      std::forward<Dst>(d), 
+                                      std::forward<cv::Mat&>(results), 
+                                      std::move(evaluator));
                     break;
                 case static_cast<int>(Granularity::GLOBAL):
                 default:
-                    return single.start(src, dst, results, 
+                    return single.start(std::forward<Src>(s),
+                                        std::forward<Dst>(d), 
+                                        std::forward<cv::Mat&>(results),
                                         std::move(evaluator));
                     break;
             }
@@ -276,7 +293,7 @@ class Measures {
         std::vector<float> peers(Match &m) const noexcept;
 
     protected:
-        cv::Mat measures;
+        cv::Mat measurements;
 };
 
 template <typename Src, typename Dst,
@@ -284,7 +301,7 @@ template <typename Src, typename Dst,
 class Generic : public Parametrisable, public Measures {
     public:
 
-        using Mode = typename Evaluator<Src&, Dst&>::Mode;
+        using Mode = typename Evaluator<Src, Dst>::Mode;
 
         template <typename ...Args> inline explicit Generic(Args... args)
             noexcept : Customisation::Entity("Task"), estimator(args...) {
@@ -294,7 +311,13 @@ class Generic : public Parametrisable, public Measures {
                                "object as the destination")
                      .characterise(Customisation::Trait::CONFIGURABLE);
             expose(measure);
-            
+           
+            define("none", ([](containee_object_t<Src>&,
+                               containee_object_t<Dst>&) noexcept -> float {
+                                return 0.0f;}));
+
+            define("iou_image", iou_image);
+
             threshold.denominate("threshold")
                      .describe("The minimum score for considering a (source, "
                                "destination) pair to be possibly similar and "
@@ -307,29 +330,57 @@ class Generic : public Parametrisable, public Measures {
         }
         inline ~Generic() = default;
 
+        inline Error::Type define(std::string key,
+                                  Estimator::Measure<Src, Dst> e) noexcept {
+            auto found = measures.find(key);
+            if (found != measures.end()) {
+                return Error::INVALID_VALUE;
+            }
+            auto p = measures.emplace(key, std::move(e));
+            measure.define(std::move(key), &p.first->second);
+            
+            return Error::OK;
+        }
+
+        inline Error::Type undefine(const std::string &key) noexcept {
+            auto found = measures.find(key);
+            if (found == measures.end()) {
+                return Error::INVALID_VALUE;
+            }
+            measures.erase(found);
+            measure.undefine(key);
+            
+            return Error::OK;
+        }
+
         /** Generic matcher tasks cannot be copied nor moved */
         Generic(const Generic& other) = delete;
         Generic(Generic&& other) = delete;
         Generic& operator=(const Generic& other) = delete;
         Generic& operator=(Generic&& other) = delete;
 
-        inline Error::Type estimate(Src &s, Dst &d, 
+        inline Error::Type estimate(Src s, Dst d, 
                                     Estimator::Measure<Src, Dst> e) noexcept {
             /* Keep track of the requested source and destination objects */
-            src = &s;
-            dst = &d;
-            auto error = estimator.start(s, d, measures, std::move(e));
+            src = std::move(storable_wrapper_t<Src>(s));
+            dst = std::move(storable_wrapper_t<Dst>(d));
+
+            auto error = estimator.start(std::forward<Src>(s),
+                                         std::forward<Dst>(d), 
+                                         std::forward<cv::Mat &>(measurements), 
+                                         std::move(e));
             if (error == Error::NONE) {
                 error = estimator.wait();
             }
             return error;
         }
             
-        inline Error::Type estimate(Src &s, Dst &d) noexcept {
+        inline Error::Type estimate(Src s, Dst d) noexcept {
             Estimator::Measure<Src, Dst> eval =
                 *(static_cast<Estimator::Measure<Src,Dst>*>
                                         (static_cast<void *>(measure)));
-            return estimate(s, d, std::move(eval)); 
+            return estimate(std::forward<Src>(s), std::forward<Dst>(d),
+                            std::move(eval)); 
         }
 
         inline Matches extract(bool exclusive_dst = true, 
@@ -339,13 +390,13 @@ class Generic : public Parametrisable, public Measures {
 
         /* Source object reference */
         inline containee_object_t<Src>& source(Match &m) const noexcept {
-            return static_cast<containee_object_t<Src>&>(*src[m.src]);
+            return static_cast<containee_object_t<Src>&>(src[m.src]);
         }
 
         /* Destination object reference */
         inline containee_object_t<Dst>& destination(Match &m) 
             const noexcept {
-            return static_cast<containee_object_t<Dst>&>(*dst[m.dst]);
+            return static_cast<containee_object_t<Dst>&>(dst[m.dst]);
         }
 
         /* Matching evaluator: the scoring evaluator */
@@ -354,12 +405,21 @@ class Generic : public Parametrisable, public Measures {
         /* Matching threshold: the minimum similarity threshold to consider a
          * match */
         PARAMETER(Direct, None, Immediate, float) threshold;
+    
+        inline static float iou_image(containee_object_t<Src>&src, 
+                                      containee_object_t<Dst>&dst) noexcept {
+            return src.zone(-1).iou(dst.zone(-1));
+        }
 
     private:
         /* Use reference to containers not to duplicate container structures */
-        Evaluator<Src&, Dst&>       estimator;
-        Src *src;
-        Dst *dst;
+        Evaluator<Src, Dst>                            estimator;
+        storable_wrapper_t<Src>                        src;
+        storable_wrapper_t<Dst>                        dst;
+
+        /* List of all available estimators */
+        std::unordered_map<std::string,
+                           Estimator::Measure<Src,Dst>> measures;
 };
 
 }  // namespace Matcher

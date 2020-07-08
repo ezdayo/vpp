@@ -35,6 +35,7 @@
 #include "vpp/stage/ocr/mser.hpp"
 #include "vpp/stage/ocr/reader.hpp"
 #include "vpp/stage/overlay.hpp"
+#include "vpp/stage/tracker.hpp"
 
 namespace DScribe {
 
@@ -50,6 +51,7 @@ class Core : public Parametrisable {
                 VPP::Stage::Blur              blur;
                 VPP::Stage::DNN::Detector     detector;
                 VPP::Stage::Clustering        clustering;
+                VPP::Stage::Tracker           tracker;
                 VPP::Stage::OCR::MSER         mser;
                 VPP::Stage::OCR::Edging       edging;
                 VPP::Stage::Overlay::ForScene overlay;

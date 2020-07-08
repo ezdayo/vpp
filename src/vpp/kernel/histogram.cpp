@@ -33,8 +33,8 @@ bool Parameters::operator == (const Parameters &other)
            (channels == other.channels);
 }
 
-Context::Context(Zone &zone, const Zone::Copier &copier, 
-                 unsigned int sz, Parameters &params) noexcept
+Context::Context(Zone &zone, Zone::Copier &copier, unsigned int sz,
+                 Parameters &params) noexcept
     : VPP::Kernel::Context(zone, copier, sz), signature(), mask(),
       config(params) {}
 
@@ -308,7 +308,7 @@ Customisation::Error Engine::clear() noexcept {
     return Customisation::Error::NONE;
 }
 
-void Engine::prepare(const Zones &zs) noexcept {
+void Engine::prepare(Zones &zs) noexcept {
     Parent::prepare(zs, config);
 }
 

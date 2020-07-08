@@ -22,13 +22,6 @@
 
 namespace DScribe {
 
-/*static void track_scene(const VPP::Scene &s, int error) noexcept {
-    if (error == Error::NONE) {
-        static VPP::Scene history;
-        history = std::move(const_cast<VPP::Scene &>(s).update(history));
-    }
-}*/
-
 Core::Detection::Detection() noexcept
     : VPP::Pipeline::ForScene(), input(), depth(), blur(), detector(), 
       clustering(), overlay() {
@@ -37,14 +30,12 @@ Core::Detection::Detection() noexcept
     USES(blur);
     USES(detector);
     USES(clustering);
+    USES(tracker);
     USES(mser);
     USES(edging);
     USES(overlay);
 
     input.use("capture");
-
-    /*VPP::Tracker::State::DEFAULT.predictability(2);
-    detector.broadcast.connect(track_scene);*/
 
     /* Only cluster if there are text zone, and only cluster those text zones */
     clustering.filter = ([](const VPP::Scene &s) noexcept {
@@ -58,8 +49,8 @@ Core::Detection::Detection() noexcept
     clustering.basic.similarity.filter = VPP::DNN::Dataset::isText;
 
     /* Create the pipeline! */
-    *this >> input >> depth >> blur >> detector >> clustering >> mser 
-          >> edging >> overlay;
+    *this >> input >> depth >> blur >> detector >> clustering >> tracker
+          >> mser >> edging >> overlay;
 }
 
 Core::Classification::Classification() noexcept

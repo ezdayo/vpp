@@ -126,7 +126,7 @@ Error::Type Darknet::process(Scene &scene) noexcept {
 
     // Capture them on the scene
     for (int i = 0; i < nboxes; ++i) {
-        std::vector<Prediction> predictions;
+        std::list<Prediction> predictions;
 
         for (int j = 0; j < (int) dataset.size(); j++) {
             auto cur_thres = dets[i].prob[j];

@@ -17,14 +17,13 @@
 #include <chrono>
 #include <ctime>
 #include <functional>
+#include <iterator>
 
 #include "vpp/scene.hpp"
 
-#include "vpp/log.hpp"
-
 namespace VPP {
 
-Scene::Scene() noexcept : view(), areas(), ts(0) { }
+Scene::Scene() noexcept : view(), areas() { }
 
 Zone &Scene::mark(Zone zone) noexcept {
     static uint64_t next_uuid = 0;
@@ -105,32 +104,30 @@ ConstZones Scene::zones(const ZoneFilter &filter) const noexcept {
     return filtered;
 }
 
-std::vector<Zone> Scene::extract(const ZoneFilterDelegate &f) noexcept {
-    std::vector<Zone> exfiltered;
+std::list<Zone> Scene::extract(const ZoneFilterDelegate &f) noexcept {
+    std::list<Zone> exfiltered;
 
     for (auto it = areas.begin(); it != areas.end(); ) {
+        auto n = std::next(it, 1);
         if (f.filter(*it)) {
-            exfiltered.emplace_back(std::move(*it));
-            it = areas.erase(it);
-        } else {
-            ++it;
+            exfiltered.splice(exfiltered.end(), areas, it);
         }
+        it = n;
     }
 
     /* Copy elision */
     return exfiltered;
 }
 
-std::vector<Zone> Scene::extract(const ZoneFilter &filter) noexcept {
-    std::vector<Zone> exfiltered;
+std::list<Zone> Scene::extract(const ZoneFilter &filter) noexcept {
+    std::list<Zone> exfiltered;
 
-    for (auto it = areas.begin(); it != areas.end(); ) {
+    for (auto it = areas.begin(); it != areas.end();) {
+        auto n = std::next(it, 1);
         if (filter(*it)) {
-            exfiltered.emplace_back(std::move(*it));
-            it = areas.erase(it);
-        } else {
-            ++it;
-        }
+            exfiltered.splice(exfiltered.end(), areas, it);
+        } 
+        it = n;
     }
 
     /* Copy elision */
@@ -143,7 +140,6 @@ Scene Scene::remember() const noexcept {
     /* This is a copy of the scene to be used carefully */
     copy.view  = view;
     copy.areas = areas;
-    copy.ts    = ts;
 
     return copy;
 }

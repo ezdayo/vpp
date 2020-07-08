@@ -34,8 +34,8 @@ namespace Tracker {
 class Kalman : public VPP::Engine::ForScene {
     public:
         using Matcher = 
-                VPP::Task::Matcher::Generic<VPP::Kernel::Kalman::Contexts,
-                                            VPP::Kernel::Kalman::Contexts,
+                VPP::Task::Matcher::Generic<VPP::Kernel::Kalman::Contexts&,
+                                            VPP::Kernel::Kalman::Contexts&,
                                             VPP::Task::Matcher::Estimator::Any>;
 
         Kalman(Scene &history, std::mutex &synchro,

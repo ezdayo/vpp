@@ -66,7 +66,7 @@ template <typename ...Z> class Stage : public Parametrisable {
 
         /* Processing a full scene */
         Error::Type prepare(Scene*& s, Z*&...z) noexcept;
-        Error::Type process(Scene &s, Z&...z) noexcept;
+        virtual Error::Type process(Scene &s, Z&...z) noexcept;
 
         std::function<bool (const Scene &, const Z&...) noexcept> filter;
         Util::Notifier<Scene, Z...> broadcast;

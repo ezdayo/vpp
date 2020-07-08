@@ -48,5 +48,17 @@ template <typename T>
 template <typename T>
     using iterator_t =
         typename std::remove_reference<T>::type::iterator;
-        
+       
+template <typename T>
+    struct storable_wrapper {
+        using type = T; };
+
+template <typename T>
+    struct storable_wrapper<T&> {
+        using type = typename std::reference_wrapper<T>::type; };
+
+template <typename T>
+    using storable_wrapper_t =
+        typename storable_wrapper<T>::type;
+
 }  // namespace Util

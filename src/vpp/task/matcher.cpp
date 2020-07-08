@@ -24,16 +24,16 @@ namespace Matcher {
 Matches Measures::extract(float threshold, bool exclusive_dst, 
                           bool exclusive_src) const noexcept {
     Matches matches;
-    if(measures.empty()) {
+    if(measurements.empty()) {
         return matches;
     }
     
-    cv::Mat mask(cv::Mat::ones(measures.rows, measures.cols, CV_8U));
+    cv::Mat mask(cv::Mat::ones(measurements.rows, measurements.cols, CV_8U));
 
     while(true) {
         double    max_score = std::numeric_limits<double>::lowest();
         cv::Point max_location;
-        cv::minMaxLoc(measures, nullptr, &max_score, nullptr, &max_location,
+        cv::minMaxLoc(measurements, nullptr, &max_score, nullptr, &max_location,
                       mask);
         if (max_score < threshold) {
             return matches;
@@ -52,13 +52,13 @@ Matches Measures::extract(float threshold, bool exclusive_dst,
 
 std::vector<float> Measures::scores(Match &m) const noexcept {
     std::vector <float> v;
-    measures.row(m.src).copyTo(v);
+    measurements.row(m.src).copyTo(v);
     return v;
 }
 
 std::vector<float> Measures::peers(Match &m) const noexcept {
     std::vector <float> v;
-    measures.col(m.dst).copyTo(v);
+    measurements.col(m.dst).copyTo(v);
     return v;
 }
 

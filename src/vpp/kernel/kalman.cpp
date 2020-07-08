@@ -22,7 +22,7 @@ namespace VPP {
 namespace Kernel {
 namespace Kalman {
 
-Context::Context(Zone &zone, const Zone::Copier &copier,
+Context::Context(Zone &zone, Zone::Copier &copier,
                  unsigned int sz, Parameters &params) noexcept
     : VPP::Kernel::Context(zone, copier, sz), 
       cv::KalmanFilter(Zone::State::length, Zone::Measure::length, 0, CV_32F),
@@ -33,7 +33,7 @@ Context::Context(Zone &zone, const Zone::Copier &copier,
 void Context::initialise() noexcept {
 #define KF_MATRIX_COPY(x) x = std::move(config.x.clone())
     KF_MATRIX_COPY(statePre);
-    statePost = zone().state;
+    statePost = std::move(static_cast<cv::Mat&>(zone().state).clone());
     KF_MATRIX_COPY(transitionMatrix);
     KF_MATRIX_COPY(controlMatrix);
     KF_MATRIX_COPY(measurementMatrix);
@@ -49,27 +49,19 @@ void Context::initialise() noexcept {
     KF_MATRIX_COPY(temp5);
 }
 
-bool Context::valid() const noexcept {
-    return validity > 0;
-}
-
 float Context::accuracy() const noexcept {
     return std::max(validity, 0.0f)/config.timeout;
-}
-
-void Context::invalidate() noexcept {
-    validity = 0;
 }
 
 void Context::predict(const VPP::View &view, float dt) noexcept {
     if (valid() && (original == nullptr)) {
         /* Set the time delta */
-        transitionMatrix.at<float>(3)  = dt;
-        transitionMatrix.at<float>(12) = dt;
-        transitionMatrix.at<float>(21) = dt;
+        transitionMatrix.at<float>(5)  = dt;
+        transitionMatrix.at<float>(14) = dt;
+        transitionMatrix.at<float>(23) = dt;
     
         /* Duplicate the previous zone and predict it !*/
-        auto z = stack(zone(-1));
+        auto &z = stack(zone(-1));
         cv::KalmanFilter::predict().copyTo(static_cast<cv::Mat&>(z.state));
         z.project(view);
 
@@ -81,6 +73,10 @@ void Context::correct(unsigned int threshold) noexcept {
     if (zones.size() > threshold) {
         cv::KalmanFilter::correct(static_cast<Zone::Measure>(zone(-1).state));
         validity = config.timeout;
+    } else {
+        if (validity < 0) {
+            invalidate();
+        }
     } 
 }
 
@@ -129,11 +125,11 @@ Engine::Engine(const Zone::Copier &c, unsigned int sz) noexcept
                            return onPredictabilityUpdate(t); });
     Customisation::Entity::expose(predictability);
 
-    predictability.denominate("tscale")
+    tscale.denominate("tscale")
                   .describe("The scaling factor for the time delta update in "
                             "the transition state matrix")
                   .characterise(Customisation::Trait::SETTABLE);
-    Customisation::Entity::expose(predictability);
+    Customisation::Entity::expose(tscale);
 
     EXPOSE_MATRIX(F, 0, "transition state");
     EXPOSE_MATRIX(F, 1, "transition state");
@@ -264,7 +260,7 @@ Customisation::Error Engine::onPredictabilityUpdate(const float &t) noexcept {
     }
 }
 
-void Engine::prepare(const Zones &zs) noexcept {
+void Engine::prepare(Zones &zs) noexcept {
     Parent::prepare(zs, model);
 }
 

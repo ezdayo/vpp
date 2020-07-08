@@ -115,6 +115,10 @@ class View final {
             return boundaries;
         }
 
+        inline uint64_t ts_ms() const noexcept {
+            return ts;
+        }
+
         /* Adding a new image in the view. Beware that only one colour image
          * and one depth map can be used in a single view.*/
         Error::Type use(cv::Mat data, Image::Mode mode) noexcept;
@@ -163,6 +167,7 @@ class View final {
         Image *                        c_gray;
         cv::Rect                       boundaries;
         std::unordered_map<int, Image> images;
+        uint64_t                       ts;
 };
 
 }  // namespace VPP

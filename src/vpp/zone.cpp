@@ -42,18 +42,18 @@ void Zone::Copy::All(Zone& out, const Zone &in) noexcept {
 
 Zone &Zone::predict(Prediction pred, float recall_f) noexcept {
     if (predictions.empty()) {
-        predictions.emplace_back(std::move(pred)); 
-        context = predictions[0];
+        predictions.emplace_front(std::move(pred)); 
+        context = predictions.front();
         return *this;
     } 
     
-    std::vector<Prediction> preds;
-    preds.push_back(std::move(pred));
+    std::list<Prediction> preds;
+    preds.emplace_front(std::move(pred));
     return predict(std::move(preds), recall_f);
 }
 
 /* Add a forgetting factor ? */
-Zone &Zone::predict(std::vector<Prediction> preds, float recall_f) noexcept {
+Zone &Zone::predict(std::list<Prediction> preds, float recall_f) noexcept {
     if (! preds.empty()) {
 
         if (!predictions.empty()) {
@@ -82,10 +82,9 @@ Zone &Zone::predict(std::vector<Prediction> preds, float recall_f) noexcept {
             predictions = std::move(preds);
         }
 
-        std::sort(predictions.begin(), predictions.end(),
-                  std::greater<Prediction>());
-        if (context.id < 0) {
-            context = predictions[0];
+        predictions.sort(std::greater<Prediction>());
+        if ( (context.id < 0) && (!predictions.empty()) ) {
+            context = predictions.front();
         }
     }
 

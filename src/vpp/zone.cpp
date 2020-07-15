@@ -138,6 +138,10 @@ Zone &Zone::update(Zone &older, float recall_f) noexcept {
     older.predict(predictions, recall_f);
     predictions = std::move(older.predictions);
 
+    /* Keep older description if newer does not have any! */
+    if (description.empty()) {
+        description = std::move(older.description);
+    }
     older.invalidate();
 
     return *this;

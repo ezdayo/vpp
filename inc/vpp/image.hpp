@@ -36,7 +36,8 @@ class Image final {
                 static constexpr int GRAY      = 0x10;
                 static constexpr int DEPTH16   = 0x20;
                 static constexpr int DEPTHF    = 0x40;
-                static constexpr int MASK      = 0x7F;
+                static constexpr int MOTION    = 0x80;
+                static constexpr int MASK      = 0xFF;
 
                 /* Get the number of channels in a given mode */
                 inline static int channels(int m) noexcept {
@@ -49,6 +50,10 @@ class Image final {
                         /* Ambiguous can be 3-channel images such as YUV */
                         case AMBIGUOUS:
                             return 3;
+
+                        /* Dual channel mode */
+                        case MOTION:
+                            return 2;
 
                         /* Single channel modes */
                         case DEPTH16:
@@ -75,10 +80,16 @@ class Image final {
                     return (m == GRAY);
                 }
 
+                inline static bool is_motion(int m) noexcept {
+                    return (m == MOTION);
+                }
+
+
                 inline Mode() noexcept : mode(AMBIGUOUS) {}
 
                 inline Mode(int m) noexcept : mode(m) {
-                    ASSERT( is_colour(m) || is_gray(m) || is_depth(m),
+                    ASSERT( is_colour(m) || is_gray(m) || is_depth(m) || 
+                            is_motion(m),
                            "Image::Mode::Mode(): invalid mode provided "
                            "%d!", m); 
                 }
@@ -114,6 +125,10 @@ class Image final {
                     return is_gray(mode);
                 }
 
+                inline bool is_motion() const noexcept {
+                    return is_motion(mode);
+                }
+ 
                 inline int channels() const noexcept {
                     return channels(mode);
                 }
@@ -154,6 +169,10 @@ class Image final {
                 static constexpr int Cr      = 0x001 | MODE(YCrCb);
                 /* Cb only exists in YCrCb */
                 static constexpr int Cb      = 0x002 | MODE(YCrCb);
+                /* Vx only exists in MOTION */
+                static constexpr int Vx      = 0x000 | MODE(MOTION);
+                /* Vy only exists in MOTION */
+                static constexpr int Vy      = 0x001 | MODE(MOTION);
                 /* Mask to get the channel id */
                 static constexpr int ID      = 0x00F;
 
@@ -165,6 +184,7 @@ class Image final {
                 static constexpr int GRAY    = MODE(GRAY);
                 static constexpr int DEPTH16 = MODE(DEPTH16);
                 static constexpr int DEPTHF  = MODE(DEPTHF);
+                static constexpr int MOTION  = MODE(MOTION);
                 /* Mask for getting the mode */
                 static constexpr int MODE    = MODE(MASK);
                 #undef MODE

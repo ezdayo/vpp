@@ -1,10 +1,10 @@
 /**
  *
- * @file      vpp/kernel/histogram.hpp
+ * @file      vpp/tracker/histogram.hpp
  *
- * @brief     This is the VPP histogram kernel description file
+ * @brief     This is the VPP histogram tracker description file
  *
- * @details   This kernel is an histogram computation and matching kernel
+ * @details   This tracker is an histogram computation and matching tracker
  *
  *            This file is part of the VPP framework (see link).
  *
@@ -22,12 +22,12 @@
 #include <utility>
 
 #include "customisation.hpp"
-#include "vpp/kernel.hpp"
+#include "vpp/tracker.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/zone.hpp"
 
 namespace VPP {
-namespace Kernel {
+namespace Tracker {
 namespace Histogram {
         
 struct Parameters {
@@ -50,7 +50,7 @@ struct Parameters {
         bool operator == (const Parameters &other) const noexcept;
 };
 
-class Context : public VPP::Kernel::Context {
+class Context : public VPP::Tracker::Context {
     public:
         explicit Context(Zone &zone, Zone::Copier &copier,
                          unsigned int sz, Parameters &params) noexcept;
@@ -66,8 +66,13 @@ class Context : public VPP::Kernel::Context {
         /* Back projecting the histogram */
         cv::Mat back_project(View &view) const noexcept;
 
+        /* Camshifting an histogram in a new view */
+        void camshift(View &view, cv::TermCriteria &term,
+                      float threshold) noexcept;
+
         cv::Mat     signature;
         cv::Mat     mask;
+        float       validity;
 
     protected:
         Parameters &config;
@@ -75,7 +80,7 @@ class Context : public VPP::Kernel::Context {
 
 using Contexts = std::vector<std::reference_wrapper<Context>>;
 
-class Engine : public VPP::Kernel::Engine<Engine, Context> {
+class Engine : public VPP::Tracker::Engine<Engine, Context> {
     public:
         class Ranges : public Parametrisable {
             public:
@@ -90,7 +95,7 @@ class Engine : public VPP::Kernel::Engine<Engine, Context> {
                           std::vector<float>)               high;
         };
 
-        using Parent = VPP::Kernel::Engine<Engine, Context>;
+        using Parent = VPP::Tracker::Engine<Engine, Context>;
 
         explicit Engine(const Zone::Copier &c, unsigned int sz) noexcept;
         ~Engine() noexcept = default;
@@ -100,7 +105,7 @@ class Engine : public VPP::Kernel::Engine<Engine, Context> {
         Customisation::Error clear() noexcept override;
 
         /* The list of channels to be used in the histogram */
-        PARAMETER(Mapped, Bounded, Immediate, std::vector<int>)        channels;
+        PARAMETER(Mapped, None, Immediate, std::vector<int>)           channels;
 
         /* The configuration for each channel */
         Ranges                                                         mask;
@@ -118,5 +123,5 @@ class Engine : public VPP::Kernel::Engine<Engine, Context> {
 };
 
 }  // namespace Histogram
-}  // namespace Kernel
+}  // namespace Tracker
 }  // namespace VPP

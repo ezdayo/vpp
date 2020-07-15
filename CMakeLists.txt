@@ -47,7 +47,7 @@ pkg_check_modules(OPENSSL REQUIRED libcrypto libssl)
 else()
 find_package(OpenCV COMPONENTS core imgproc REQUIRED)
 find_package(OpenCV COMPONENTS dnn freetype imgcodecs highgui objdetect
-       	                       video videoio xfeatures2d)
+       	                       tracking video videoio xfeatures2d)
 endif()
 
 pkg_check_modules(CUSTOMISATION customisation REQUIRED)
@@ -109,6 +109,10 @@ endif()
 
 if(OPENCV_OBJDETECT_FOUND)
 	set(VPP_HAS_SIMILARITY_CLUSTERING_SUPPORT TRUE)
+endif()
+
+if(OPENCV_TRACKING_FOUND)
+	set(VPP_HAS_TRACKER_SUPPORT TRUE)
 endif()
 
 if(OPENCV_VIDEO_FOUND)
@@ -223,12 +227,16 @@ endif()
 
 if(VPP_HAS_TRACKING_SUPPORT)
 	set(LIB_FILES ${LIB_FILES}
-	              ${PROJECT_SOURCE_DIR}/src/vpp/kernel/histogram.cpp
-	              ${PROJECT_SOURCE_DIR}/src/vpp/kernel/kalman.cpp
 		      ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/camshift.cpp
 		      ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/kalman.cpp
-		      ${PROJECT_SOURCE_DIR}/src/vpp/task/kernel/histogram.cpp
-		      ${PROJECT_SOURCE_DIR}/src/vpp/task/kernel/kalman.cpp)
+		      ${PROJECT_SOURCE_DIR}/src/vpp/engine/tracker/ocv.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/task/tracker/histogram.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/task/tracker/kalman.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/task/tracker/ocv.cpp
+		      ${PROJECT_SOURCE_DIR}/src/vpp/task/motion.cpp
+	              ${PROJECT_SOURCE_DIR}/src/vpp/tracker/histogram.cpp
+	              ${PROJECT_SOURCE_DIR}/src/vpp/tracker/kalman.cpp
+	              ${PROJECT_SOURCE_DIR}/src/vpp/tracker/ocv.cpp)
 endif()
 if(ANDROID)
 	set(LIB_FILES ${LIB_FILES}

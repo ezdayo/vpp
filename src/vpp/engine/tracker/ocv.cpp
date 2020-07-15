@@ -1,9 +1,8 @@
 /**
  *
- * @file      vpp/engine/tracker/camshift.cpp
+ * @file      vpp/engine/tracker/ocv.cpp
  *
- * @brief     This is the VPP camshift-based predicter and tracker
- *            implementation file
+ * @brief     This is the OCV trackers implementation file
  *
  *            This file is part of the VPP framework (see link).
  *
@@ -15,15 +14,14 @@
  *
  **/
 
-#include "vpp/engine/tracker/camshift.hpp"
+#include "vpp/engine/tracker/ocv.hpp"
 
 namespace VPP {
 namespace Engine {
 namespace Tracker {
 
-CamShift::CamShift(Scene &history, std::mutex &synchro, 
-                   std::vector<Zone> *added,
-                   std::vector<Zone> *removed) noexcept
+OCV::OCV(Scene &history, std::mutex &synchro, std::vector<Zone> *added,
+         std::vector<Zone> *removed) noexcept
     : ForScene(), engine(Zone::Copy::Geometry, 3),
       initialisation(Util::Task::Core::Mode::Async*8, engine), 
       estimation(Util::Task::Core::Mode::Async*8, engine),
@@ -45,10 +43,10 @@ CamShift::CamShift(Scene &history, std::mutex &synchro,
     expose(matcher);
 }
 
-Error::Type CamShift::process(Scene &scene) noexcept {
+Error::Type OCV::process(Scene &scene) noexcept {
 
     /* Get the historic and new contexts lists */
-    VPP::Tracker::Histogram::Contexts new_contexts;
+    VPP::Tracker::OCV::Contexts new_contexts;
     auto historic_contexts = 
         std::move(engine.contexts(engine.history_contexts));
     
@@ -79,16 +77,7 @@ Error::Type CamShift::process(Scene &scene) noexcept {
     for (auto &m : matches) {
         auto &d = matcher.destination(m);
         auto &s = matcher.source(m);
-        d.signature = std::move(s.signature);
-        d.validity  = s.validity;
         d.merge(s);
-    }
-
-    /* Remove invalid contexts */
-    for (auto &c : engine.contexts()) {
-        if (c.get().validity < static_cast<float>(estimation.threshold)) {
-            c.get().invalidate();
-        }
     }
 
     /* Keep track of the changes! */

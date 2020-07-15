@@ -38,6 +38,7 @@ Skipping::Skipping() noexcept : task(VPP::Task::Blur::Skipping::Mode::Async*8) {
 }
 
 Error::Type Skipping::process(Scene &scene) noexcept {
+    scene.view.cache(VPP::Image::Mode::GRAY);
     cv::Rect frame(scene.view.frame());
     task.start(scene, frame);
     auto e = task.wait();

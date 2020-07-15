@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include "vpp/engine/tracker/camshift.hpp"
 #include "vpp/engine/tracker/history.hpp"
 #include "vpp/engine/tracker/kalman.hpp"
 #include "vpp/engine/tracker/none.hpp"
+#include "vpp/engine/tracker/ocv.hpp"
 #include "vpp/stage.hpp"
 #include "vpp/util/observability.hpp"
 
@@ -32,9 +34,11 @@ class Tracker : public Stage::ForScene {
         Tracker() noexcept;
         ~Tracker() noexcept = default;
 
-        VPP::Engine::Tracker::Kalman  kalman;
-        VPP::Engine::Tracker::History history;
-        VPP::Engine::Tracker::None    none;
+        VPP::Engine::Tracker::OCV      ocv;
+        VPP::Engine::Tracker::CamShift camshift;
+        VPP::Engine::Tracker::Kalman   kalman;
+        VPP::Engine::Tracker::History  history;
+        VPP::Engine::Tracker::None     none;
 
         void snapshot(Scene &s) noexcept;
         void snapshot(std::vector<Zone> &entering,

@@ -24,7 +24,7 @@
 #include "vpp/error.hpp"
 #include "vpp/engine.hpp"
 #include "vpp/scene.hpp"
-#include "vpp/task/kernel/kalman.hpp"
+#include "vpp/task/tracker/kalman.hpp"
 #include "vpp/task/matcher.hpp"
 
 namespace VPP {
@@ -34,8 +34,8 @@ namespace Tracker {
 class Kalman : public VPP::Engine::ForScene {
     public:
         using Matcher = 
-                VPP::Task::Matcher::Generic<VPP::Kernel::Kalman::Contexts&,
-                                            VPP::Kernel::Kalman::Contexts&,
+                VPP::Task::Matcher::Generic<VPP::Tracker::Kalman::Contexts&,
+                                            VPP::Tracker::Kalman::Contexts&,
                                             VPP::Task::Matcher::Estimator::Any>;
 
         Kalman(Scene &history, std::mutex &synchro,
@@ -47,9 +47,9 @@ class Kalman : public VPP::Engine::ForScene {
 
         Error::Type process(Scene &scene) noexcept override;
 
-        VPP::Kernel::Kalman::Engine           engine;
-        VPP::Task::Kernel::Kalman::Prediction prediction;
-        VPP::Task::Kernel::Kalman::Correction correction;
+        VPP::Tracker::Kalman::Engine           engine;
+        VPP::Task::Tracker::Kalman::Prediction prediction;
+        VPP::Task::Tracker::Kalman::Correction correction;
         Matcher                               matcher;
 
     private:

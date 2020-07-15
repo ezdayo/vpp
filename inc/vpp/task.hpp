@@ -24,7 +24,6 @@
 #include <utility>
 
 #include "vpp/log.hpp"
-#include "vpp/kernel.hpp"
 #include "vpp/scene.hpp"
 #include "vpp/util/task.hpp"
 #include "vpp/types.hpp"

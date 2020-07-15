@@ -202,20 +202,20 @@ std::vector<uint16_t>
 
 View::View() noexcept 
     : depth(), c_bgr(nullptr), c_hsv(nullptr), c_yuv(nullptr), c_ycc(nullptr), 
-      c_gray(nullptr), boundaries(), images(), ts(0) {}
+      c_gray(nullptr), c_motion(nullptr), boundaries(), images(), ts(0) {}
 
 View::~View() noexcept = default;
 
 View::View(const View& other) noexcept
     : depth(other.depth), c_bgr(nullptr), c_hsv(nullptr), c_yuv(nullptr),
-      c_ycc(nullptr), c_gray(nullptr), boundaries(other.boundaries),
-      images(other.images), ts(other.ts) {
+      c_ycc(nullptr), c_gray(nullptr), c_motion(nullptr),
+      boundaries(other.boundaries), images(other.images), ts(other.ts) {
     reshortcut();
 }
 
 View::View(View&& other) noexcept
     : depth(std::move(other.depth)), c_bgr(nullptr), c_hsv(nullptr),
-    c_yuv(nullptr), c_ycc(nullptr), c_gray(nullptr), 
+    c_yuv(nullptr), c_ycc(nullptr), c_gray(nullptr), c_motion(nullptr), 
     boundaries(std::move(other.boundaries)), images(std::move(other.images)), 
     ts(std::move(other.ts)) {
     reshortcut();
@@ -229,6 +229,7 @@ View& View::operator=(const View& other) noexcept {
         c_yuv      = nullptr;
         c_ycc      = nullptr;
         c_gray     = nullptr;
+        c_motion   = nullptr;
         boundaries = other.boundaries;
         images     = other.images;
         ts         = other.ts;
@@ -246,6 +247,7 @@ View& View::operator=(View&& other) noexcept {
         c_yuv      = nullptr;
         c_ycc      = nullptr;
         c_gray     = nullptr;
+        c_motion   = nullptr;
         boundaries = std::move(other.boundaries);
         images     = std::move(other.images);
         ts         = std::move(other.ts);
@@ -256,9 +258,9 @@ View& View::operator=(View&& other) noexcept {
 }
 
 Error::Type View::use(cv::Mat data, Image::Mode mode) noexcept {
-    ASSERT(mode.is_colour(),
-           "View::Use::use(): Expecting a colour image but got a mode %d image "
-           "instead!", static_cast<int>(mode));
+    ASSERT(mode.is_colour() || mode.is_motion(),
+           "View::Use::use(): Expecting a colour or motion image but got a "
+           "mode %d image instead!", static_cast<int>(mode));
 
     /* Update the timestamp if none is set */
     if (ts == 0) {
@@ -278,12 +280,19 @@ Error::Type View::use(cv::Mat data, Image::Mode mode) noexcept {
             return Error::INVALID_REQUEST;
     }
     
-    if (cached_colour() != nullptr) {
+    if ((mode.is_colour()) && (cached_colour() != nullptr)) {
         ASSERT( false,
                 "View::use(): Changing the original colour image of mode %d "
                 "with a new one of mode %d!", 
                 static_cast<int>(cached_colour()->mode()),
                 static_cast<int>(mode));
+        return Error::INVALID_REQUEST;
+    }
+ 
+    if ((mode.is_motion()) && (cached_motion() != nullptr)) {
+        ASSERT( false,
+                "View::use(): Changing the original motion image with a new "
+                "one!");
         return Error::INVALID_REQUEST;
     }
 
@@ -294,7 +303,9 @@ Error::Type View::use(cv::Mat data, Image::Mode mode) noexcept {
     
     auto &i = p.first->second;
     shortcut(i.mode(), &i);
-    boundaries = i.frame();
+    if (mode.is_colour()) {
+        boundaries = i.frame();
+    }
 
     return Error::NONE;
 }
@@ -394,6 +405,14 @@ Image *View::cached_depth() noexcept {
     return depth;
 }
 
+Image *View::cached_motion() noexcept {
+    if (c_motion != nullptr) {
+        return c_motion;
+    }
+
+    return nullptr;
+}
+
 Image View::image(const Image::Mode &mode, const cv::Rect &roi) noexcept {
     
     /* If there is already one such image, then use it directly! */
@@ -455,11 +474,11 @@ Image &View::n() noexcept { \
 \
     return image(Image::Mode::M);\
 }
-GENERATE_SHORTCUT(bgr,  BGR)
-GENERATE_SHORTCUT(hsv,  HSV)
-GENERATE_SHORTCUT(yuv,  YUV)
-GENERATE_SHORTCUT(ycc,  YCrCb)
-GENERATE_SHORTCUT(gray, GRAY)
+GENERATE_SHORTCUT(bgr,    BGR)
+GENERATE_SHORTCUT(hsv,    HSV)
+GENERATE_SHORTCUT(yuv,    YUV)
+GENERATE_SHORTCUT(ycc,    YCrCb)
+GENERATE_SHORTCUT(gray,   GRAY)
 
 Image &View::cache(const Image::Mode &mode) noexcept {
      /* If there is already one such image, then use it directly! */
@@ -534,6 +553,9 @@ void View::shortcut(Image::Mode m, Image *i) noexcept {
         case Image::Mode::GRAY:
             c_gray = i;
             break;
+        case Image::Mode::MOTION:
+            c_motion = i;
+            break;
         default:
             ASSERT(false, "View::shortcut(): Invalid shortcut requested "
                           "for image mode %d", static_cast<int>(m));
@@ -544,7 +566,8 @@ void View::shortcut(Image::Mode m, Image *i) noexcept {
 void View::reshortcut() noexcept {
     for (auto &p : images) {
             auto &i = p.second;
-            if (i.mode().is_colour() || i.mode().is_gray()) {
+            if (i.mode().is_colour() || i.mode().is_gray() || 
+                i.mode().is_motion()) {
                 shortcut(i.mode(), &i);
             }
     }

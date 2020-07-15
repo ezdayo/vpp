@@ -1,13 +1,10 @@
 /**
  *
- * @file      vpp/engine/tracker/camshift.hpp
+ * @file      vpp/engine/tracker/ocv.hpp
  *
- * @brief     This is the VPP camshift-based predicter and tracker description
- *            file
+ * @brief     This is the OCV trackers description file
  *
- * @details   This engine is a camshift predicter aimed at predicting the next
- *            estimated position of zones coupled to a histogram comparisons to
- *            check if the predicted zone is relevant or not
+ * @details   This engine is a generic engine for OCV trackers
  *
  *            This file is part of the VPP framework (see link).
  *
@@ -24,31 +21,31 @@
 #include "vpp/error.hpp"
 #include "vpp/engine.hpp"
 #include "vpp/scene.hpp"
-#include "vpp/task/tracker/histogram.hpp"
+#include "vpp/task/tracker/ocv.hpp"
 #include "vpp/task/matcher.hpp"
 
 namespace VPP {
 namespace Engine {
 namespace Tracker {
 
-class CamShift : public VPP::Engine::ForScene {
+class OCV : public VPP::Engine::ForScene {
     public:
         using Matcher = 
-                VPP::Task::Matcher::Generic<VPP::Tracker::Histogram::Contexts&,
-                                            VPP::Tracker::Histogram::Contexts&,
+                VPP::Task::Matcher::Generic<VPP::Tracker::OCV::Contexts&,
+                                            VPP::Tracker::OCV::Contexts&,
                                             VPP::Task::Matcher::Estimator::Any>;
 
-        CamShift(Scene &history, std::mutex &synchro,
+        OCV(Scene &history, std::mutex &synchro,
                  std::vector<Zone> *added = nullptr,
                  std::vector<Zone> *removed = nullptr) noexcept;
-        ~CamShift() noexcept = default;
+        ~OCV() noexcept = default;
 
         Error::Type process(Scene &scene) noexcept override;
 
-        VPP::Tracker::Histogram::Engine            engine;
-        VPP::Task::Tracker::Histogram::Initialiser initialisation;
-        VPP::Task::Tracker::Histogram::CamShift    estimation;
-        Matcher                                    matcher;
+        VPP::Tracker::OCV::Engine            engine;
+        VPP::Task::Tracker::OCV::Initialiser initialisation;
+        VPP::Task::Tracker::OCV::Predicter   estimation;
+        Matcher                              matcher;
 
     private:
         std::mutex &                          update;

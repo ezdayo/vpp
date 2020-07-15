@@ -1,10 +1,10 @@
 /**
  *
- * @file      vpp/kernel.hpp
+ * @file      vpp/tracker.hpp
  *
- * @brief     This is the VPP kernel description file
+ * @brief     This is the VPP tracker description file
  *
- * @details   This file describes the generic structure of a VPP kernel aimed at
+ * @details   This file describes the generic structure of a VPP tracker aimed at
  *            efficiently running zone-grained algorithms
  *
  * @author    Olivier Stoltz-Douchet <ezdayo@gmail.com>
@@ -27,7 +27,7 @@
 #include "vpp/scene.hpp"
 
 namespace VPP {
-namespace Kernel {
+namespace Tracker {
 
     class Context {
         public:
@@ -104,7 +104,7 @@ namespace Kernel {
             inline unsigned int offset_of(int offset) const noexcept {
                 ASSERT(offset >= -static_cast<int>(zones.size()) && 
                        offset < static_cast<int>(zones.size()),
-                       "Kernel::Context::zone(): invalid offset %d provided "
+                       "Tracker::Context::zone(): invalid offset %d provided "
                        "for a zones vector of size %d", offset,
                        static_cast<int>(zones.size()));
                 return (offset < 0) ? zones.size() + offset : offset;
@@ -127,7 +127,7 @@ namespace Kernel {
     
     using Contexts = std::vector<std::reference_wrapper<Context>>;
 
-    /* Class C must be a child class of Context, and E the actual kernel engine
+    /* Class C must be a child class of Context, and E the actual tracker engine
      * type */
     template <typename E, typename C> class Engine : public Parametrisable {
         public:
@@ -136,7 +136,7 @@ namespace Kernel {
 
             /* Default constructor and destructor */
             inline Engine(Zone::Copier c, unsigned int sz = 0) noexcept
-                : Customisation::Entity("Kernel"), zone_copier(std::move(c)),
+                : Customisation::Entity("Tracker"), zone_copier(std::move(c)),
                   stack_size(sz) {
                 recall.denominate("recall")
                       .describe("The factor to apply to all predictions scores "
@@ -150,17 +150,17 @@ namespace Kernel {
             }
             inline ~Engine() = default;
 
-            /* Kernels cannot be copied nor moved */
+            /* Trackers cannot be copied nor moved */
             inline Engine(const Engine& other) = delete;
             inline Engine(Engine&& other) = delete;
             inline Engine& operator=(const Engine& other) = delete;
             inline Engine& operator=(Engine&& other) = delete;
 
-            inline const C &context(const VPP::Kernel::Context &m) {
+            inline const C &context(const VPP::Tracker::Context &m) {
                 return static_cast<const C &>(m);
             }
 
-            inline C &context(VPP::Kernel::Context &m) {
+            inline C &context(VPP::Tracker::Context &m) {
                 return static_cast<C &>(m);
             }
 
@@ -242,7 +242,7 @@ namespace Kernel {
                 return zones(all_contexts, offset);
             }
 
-            /* Preparing kernel contexts for new zones */
+            /* Preparing tracker contexts for new zones */
             template <typename ...Args> 
                 inline void prepare(Zones &zs, Args&... a) noexcept {
                 for (auto z : zs) {
@@ -296,9 +296,11 @@ namespace Kernel {
                 }
                 /* Remove invalid zones of scene (if any) */
                 scene.extract(Zone::when_invalid);
-                for (auto &w : scene.zones()) {
-                    Zone &z=w;
-                    z.description = std::move(std::to_string(z.uuid));
+
+                for (auto &z : scene.zones()) {
+                    z.get().description += "\n(" + 
+                                           std::to_string(z.get().uuid) +
+                                           ")";
                 }
             }
 
@@ -312,5 +314,5 @@ namespace Kernel {
             std::list<C>       storage;
     };
 
-}  // namespace Kernel
+}  // namespace Tracker
 }  // namespace VPP

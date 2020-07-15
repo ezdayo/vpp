@@ -25,8 +25,8 @@ namespace Tracker {
 Kalman::Kalman(Scene &history, std::mutex &synchro, std::vector<Zone> *added,
                std::vector<Zone> *removed) noexcept
     : ForScene(), engine(Zone::Copy::Geometry, 3),
-      prediction(VPP::Task::Kernel::Kalman::Prediction::Mode::Async*8, engine), 
-      correction(VPP::Task::Kernel::Kalman::Correction::Mode::Async*8, engine),
+      prediction(VPP::Task::Tracker::Kalman::Prediction::Mode::Async*8, engine), 
+      correction(VPP::Task::Tracker::Kalman::Correction::Mode::Async*8, engine),
       matcher(Matcher::Mode::Sync, Matcher::Mode::Async*8,
               Matcher::Mode::Async*8),
       update(synchro), latest(history), entering(added), 

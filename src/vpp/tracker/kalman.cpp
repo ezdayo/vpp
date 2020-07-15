@@ -1,8 +1,8 @@
 /**
  *
- * @file      vpp/kernel/kalman.cpp
+ * @file      vpp/tracker/kalman.cpp
  *
- * @brief     This is the VPP kalman kernel implementation file
+ * @brief     This is the VPP kalman tracker implementation file
  *
  *            This file is part of the VPP framework (see link).
  *
@@ -16,15 +16,15 @@
 
 #include <opencv2/core/mat.hpp>
 
-#include "vpp/kernel/kalman.hpp"
+#include "vpp/tracker/kalman.hpp"
 
 namespace VPP {
-namespace Kernel {
+namespace Tracker {
 namespace Kalman {
 
 Context::Context(Zone &zone, Zone::Copier &copier,
                  unsigned int sz, Parameters &params) noexcept
-    : VPP::Kernel::Context(zone, copier, sz), 
+    : VPP::Tracker::Context(zone, copier, sz), 
       cv::KalmanFilter(Zone::State::length, Zone::Measure::length, 0, CV_32F),
       validity(params.timeout), config(params) {
           initialise();
@@ -87,7 +87,7 @@ void Context::correct(unsigned int threshold) noexcept {
     Customisation::Entity::expose(M##L)
 
 Engine::Engine(const Zone::Copier &c, unsigned int sz) noexcept 
-    : VPP::Kernel::Engine<Engine, Context>(c, sz), predictability(10.0),
+    : VPP::Tracker::Engine<Engine, Context>(c, sz), predictability(10.0),
       tscale(1.0),
       F0({   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0 }),
       F1({   0.0,   1.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0 }),
@@ -166,7 +166,7 @@ static Customisation::Error do_copy(std::vector<float> i,
                                     cv::Mat &o, int r) noexcept {
     int sz = static_cast<int>(i.size());
     ASSERT((sz == o.cols) && (r >= 0) && (r < o.rows),
-            "Kernel::Kalman::Engine::setup(): "
+            "Tracker::Kalman::Engine::setup(): "
             "Cannot fit a %d row at row %d of a %x%d matrix",
             sz, r, o.cols, o.rows);
 
@@ -251,6 +251,11 @@ Customisation::Error Engine::clear() noexcept {
     return Customisation::Error::NONE;
 }
 
+void Engine::prepare(Zones &zs) noexcept {
+    Parent::prepare(zs, model);
+}
+
+
 Customisation::Error Engine::onPredictabilityUpdate(const float &t) noexcept {
     if (t > 0) {
         model.timeout = t;
@@ -260,10 +265,6 @@ Customisation::Error Engine::onPredictabilityUpdate(const float &t) noexcept {
     }
 }
 
-void Engine::prepare(Zones &zs) noexcept {
-    Parent::prepare(zs, model);
-}
-
 }  // namespace Kalman
-}  // namespace Kernel
+}  // namespace Tracker
 }  // namespace VPP

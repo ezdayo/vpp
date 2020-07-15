@@ -119,8 +119,8 @@ class View final {
             return ts;
         }
 
-        /* Adding a new image in the view. Beware that only one colour image
-         * and one depth map can be used in a single view.*/
+        /* Adding a new image in the view. Beware that only one colour image,
+         * one depth map and one motion map can be used in a single view.*/
         Error::Type use(cv::Mat data, Image::Mode mode) noexcept;
         Error::Type use(cv::Mat depth, Image::Mode mode, 
                         const ProjectionDelegate &pd) noexcept;
@@ -130,6 +130,7 @@ class View final {
         Image *cached(Image::Mode mode) noexcept;
         Image *cached_colour() noexcept;
         Image *cached_depth() noexcept;
+        Image *cached_motion() noexcept;
 
         /* "Uncached" image, i.e. should conversion happens, those are not
          * cached back, but if a cached version is found, then use it!
@@ -165,6 +166,7 @@ class View final {
         Image *                        c_yuv;
         Image *                        c_ycc;
         Image *                        c_gray;
+        Image *                        c_motion;
         cv::Rect                       boundaries;
         std::unordered_map<int, Image> images;
         uint64_t                       ts;

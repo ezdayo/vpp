@@ -1,8 +1,8 @@
 /**
  *
- * @file      vpp/task/kernel/kalman.hpp
+ * @file      vpp/task/tracker/kalman.hpp
  *
- * @brief     These are various tasks to efficiently use Kalman kernels in a
+ * @brief     These are various tasks to efficiently use Kalman trackers in a
  *            scene
  *
  * @details   This is a collection of tasks for helping in the efficient
@@ -21,71 +21,71 @@
 #pragma once
 
 #include "customisation/parameter.hpp"
-#include "vpp/kernel/kalman.hpp"
+#include "vpp/tracker/kalman.hpp"
 #include "vpp/error.hpp"
 #include "vpp/task.hpp"
 
 namespace VPP {
 namespace Task {
-namespace Kernel {
+namespace Tracker {
 namespace Kalman {
 
 class Prediction
-    : public VPP::Tasks::List<Prediction, VPP::Kernel::Kalman::Contexts&,
+    : public VPP::Tasks::List<Prediction, VPP::Tracker::Kalman::Contexts&,
                               Scene&> {
     public:
         using Parent = 
-                VPP::Tasks::List<Prediction, VPP::Kernel::Kalman::Contexts&,
+                VPP::Tasks::List<Prediction, VPP::Tracker::Kalman::Contexts&,
                                  Scene&>;
         using typename Parent::Mode;
         using Parent::process;
         using Parent::next;
 
         explicit Prediction(const int mode,
-                            VPP::Kernel::Kalman::Engine &e) noexcept;
+                            VPP::Tracker::Kalman::Engine &e) noexcept;
         virtual ~Prediction() noexcept = default;
  
         Error::Type start(Scene &s, float dt,
-                          VPP::Kernel::Kalman::Contexts &ctx) noexcept;
+                          VPP::Tracker::Kalman::Contexts &ctx) noexcept;
         Error::Type start(Scene &s, float dt) noexcept;
         Error::Type wait() noexcept;
 
-        Error::Type process(VPP::Kernel::Kalman::Context &c, Scene &s) noexcept;
+        Error::Type process(VPP::Tracker::Kalman::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Kalman::Contexts contexts;
-        VPP::Kernel::Kalman::Engine & kalman;
+        VPP::Tracker::Kalman::Contexts contexts;
+        VPP::Tracker::Kalman::Engine & kalman;
         float                         dt;
 };
 
 class Correction 
-    : public VPP::Tasks::List<Correction, VPP::Kernel::Kalman::Contexts&,
+    : public VPP::Tasks::List<Correction, VPP::Tracker::Kalman::Contexts&,
                               Scene&> {
     public:
         using Parent =
-                VPP::Tasks::List<Correction, VPP::Kernel::Kalman::Contexts&,
+                VPP::Tasks::List<Correction, VPP::Tracker::Kalman::Contexts&,
                                  Scene&>;
         using typename Parent::Mode;
         using Parent::process;
         using Parent::next;
         
         explicit Correction(const int mode,
-                            VPP::Kernel::Kalman::Engine &e) noexcept;
+                            VPP::Tracker::Kalman::Engine &e) noexcept;
         virtual ~Correction() noexcept = default;
  
         Error::Type start(Scene &s,
-                          VPP::Kernel::Kalman::Contexts &ctx) noexcept;
+                          VPP::Tracker::Kalman::Contexts &ctx) noexcept;
         Error::Type start(Scene &s) noexcept;
 
-        Error::Type process(VPP::Kernel::Kalman::Context &c, Scene &s) noexcept;
+        Error::Type process(VPP::Tracker::Kalman::Context &c, Scene &s) noexcept;
 
     private:
-        VPP::Kernel::Kalman::Contexts contexts;
-        VPP::Kernel::Kalman::Engine & kalman;
+        VPP::Tracker::Kalman::Contexts contexts;
+        VPP::Tracker::Kalman::Engine & kalman;
 };
 
 
 }  // namespace Kalman
-}  // namespace Kernel
+}  // namespace Tracker
 }  // namespace Task
 }  // namespace VPP

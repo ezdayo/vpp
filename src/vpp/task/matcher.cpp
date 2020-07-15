@@ -35,7 +35,10 @@ Matches Measures::extract(float threshold, bool exclusive_dst,
         cv::Point max_location;
         cv::minMaxLoc(measurements, nullptr, &max_score, nullptr, &max_location,
                       mask);
-        if (max_score < threshold) {
+        /* minMaxLoc returns negative row and columns if none is found (when
+         * the mask covers everything for instance) */
+        if ( (max_score < threshold) || (max_location.x < 0) || 
+             (max_location.y < 0) ) {
             return matches;
         }
        

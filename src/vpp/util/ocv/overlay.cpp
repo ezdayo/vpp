@@ -119,8 +119,12 @@ namespace Font {
                 lineCnt = 0;
                 while (std::getline(input, line)) {
                     Util::UTF8::toASCII(line);
+                    curSz = cv::getTextSize(line, font, fontScale, thickness,
+                                            &baseLine);
                     cv::putText(frame, line, 
-                                at + offset/2 + cv::Point(0,(lineCnt+1)*height),
+                                at + offset/2 + 
+                                cv::Point((maxSz.width-curSz.width)/2, 
+                                          (lineCnt+1)*height),
                                 font, fontScale, color, thickness, 
                                 static_cast<int>(antialiasing), false);
                     ++lineCnt;
@@ -171,10 +175,11 @@ namespace Font {
                 input.seekg(start, input.beg);
                 lineCnt = 0;
                 while (std::getline(input, line)) {
-
+                    curSz = font->getTextSize(line, height, -1, &baseLine);
                     font->putText(frame, line, 
                                   at + offset/2 +
-                                  cv::Point(0, ((4*lineCnt-1)*height)/4),
+                                  cv::Point((maxSz.width-curSz.width)/2, 
+                                            ((4*lineCnt-1)*height)/4),
                                   height, color, -1, 
                                   static_cast<int>(antialiasing), false);
                     ++lineCnt;

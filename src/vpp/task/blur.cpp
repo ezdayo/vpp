@@ -62,13 +62,13 @@ Error::Type Skipping::wait() noexcept {
 Error::Type Skipping::process(Scene &s, cv::Rect &r) noexcept {
     /* Background information on this algorithm is provided at:
      * https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv */
-    cv::Mat input, grey, mean, laplacian, stddev;
+    cv::Mat input, mean, laplacian, stddev;
 
     /* Crop the ROI and move it to grey to compute the Laplacian */
     /*cv::cvtColor(s.view.bgr(r).input(), grey, cv::COLOR_BGR2GRAY);
     cv::Laplacian(grey, laplacian, CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);*/
-    cv::Laplacian(s.view.image(Image::Mode::GRAY, r).input(), laplacian, 
-                  CV_16S, 3, 1, 0, cv::BORDER_DEFAULT);
+    cv::Laplacian(s.view.gray(r).input(), laplacian, CV_16S, 3, 1, 0, 
+                  cv::BORDER_DEFAULT);
     
     /* Compute the standard deviation which first element is an estimation
      * of its sharpness */

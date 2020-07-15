@@ -1,10 +1,10 @@
 /**
  *
- * @file      vpp/kernel/kalman.hpp
+ * @file      vpp/tracker/kalman.hpp
  *
- * @brief     This is the VPP kalman kernel description file
+ * @brief     This is the VPP kalman tracker description file
  *
- * @details   This kernel is a kalman predicter aimed at predicting the next
+ * @details   This tracker is a kalman predicter aimed at predicting the next
  *            estimated position of zones coupled to a tracker to keep the last
  *            scene status
  *
@@ -23,11 +23,11 @@
 #include <opencv2/video/tracking.hpp>
 
 #include "customisation.hpp"
-#include "vpp/kernel.hpp"
+#include "vpp/tracker.hpp"
 #include "vpp/zone.hpp"
 
 namespace VPP {
-namespace Kernel {
+namespace Tracker {
 namespace Kalman {
 
 class Parameters : public cv::KalmanFilter {
@@ -44,7 +44,7 @@ class Parameters : public cv::KalmanFilter {
         float timeout;
 };
 
-class Context : public VPP::Kernel::Context, cv::KalmanFilter {
+class Context : public VPP::Tracker::Context, cv::KalmanFilter {
     public:
         explicit Context(Zone &zone, Zone::Copier &copier,
                          unsigned int sz, Parameters &params) noexcept;
@@ -71,9 +71,9 @@ class Context : public VPP::Kernel::Context, cv::KalmanFilter {
 
 using Contexts = std::vector<std::reference_wrapper<Context>>;
 
-class Engine : public VPP::Kernel::Engine<Engine, Context> {
+class Engine : public VPP::Tracker::Engine<Engine, Context> {
     public:
-        using Parent = VPP::Kernel::Engine<Engine, Context>;
+        using Parent = VPP::Tracker::Engine<Engine, Context>;
 
         explicit Engine(const Zone::Copier &c, unsigned int sz = 2) noexcept;
         ~Engine() noexcept = default;
@@ -133,5 +133,5 @@ class Engine : public VPP::Kernel::Engine<Engine, Context> {
 };
 
 }  // namespace Kalman
-}  // namespace Kernel
+}  // namespace Tracker
 }  // namespace VPP

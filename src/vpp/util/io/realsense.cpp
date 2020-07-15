@@ -17,6 +17,7 @@
 #include <bitset>
 #include <cstring>
 #include <librealsense2/rs.hpp>
+#include <librealsense2/hpp/rs_processing.hpp>
 #include <unordered_map>
 
 #include "vpp/error.hpp"
@@ -61,6 +62,10 @@ private:
     std::unordered_map<int, unsigned long long> last_frame_id;
     std::unordered_map<int, unsigned long long> used_frame_id;
     rs2_intrinsics                              intrinsics;
+    rs2::disparity_transform                    depth2disparity;
+    rs2::disparity_transform                    disparity2depth;
+    rs2::temporal_filter                        temporal_filter;
+    rs2::hole_filling_filter                    hole_filter;
 };
 
 /*
@@ -134,7 +139,11 @@ static int stream_for(const std::string &protocol) {
 Realsense::Core::Core(const char *device) noexcept
     : VPP::Projecter(), serial(device), used(), configured(),
       cfg(), pipe(), running(), align_to_color(RS2_STREAM_COLOR), data(),
-      frame(), last_frame_id(), used_frame_id(), intrinsics() {
+      frame(), last_frame_id(), used_frame_id(), intrinsics(),
+      depth2disparity(), disparity2depth(false), 
+      temporal_filter(0.4, 20.0, 8), /* alpha = 0.4, delta = 20, persistence 
+                                        always (8) */ 
+      hole_filter(1) /* Fill with farest from */ {
     zscale = 0.0;
     LOGD("Realsense::Core::Core(%s)", serial.c_str());
     cfg.enable_device(serial.c_str());
@@ -210,8 +219,19 @@ int Realsense::Core::setup(rs2_stream id, int &width, int &height) noexcept {
     used_frame_id.emplace(id, 0);
 
     if (id == RS2_STREAM_DEPTH) {
-        zscale = running.get_device().first<rs2::depth_sensor>()
-                 .get_depth_scale();
+        auto sensor = running.get_device().first<rs2::depth_sensor>();
+        sensor.set_option(RS2_OPTION_VISUAL_PRESET, 
+                          RS2_RS400_VISUAL_PRESET_HIGH_ACCURACY);
+ 
+        if (sensor.supports(RS2_OPTION_EMITTER_ENABLED)) {
+            sensor.set_option(RS2_OPTION_EMITTER_ENABLED, 1);
+        }
+        if (sensor.supports(RS2_OPTION_LASER_POWER)) {
+            auto range = sensor.get_option_range(RS2_OPTION_LASER_POWER);
+            sensor.set_option(RS2_OPTION_LASER_POWER, range.max);
+        }
+
+        zscale = sensor.get_depth_scale();
         intrinsics = geom.get_intrinsics();
         LOGD("Realsense::Core::setup(%s@%d): zscale = %f", 
               serial.c_str(), id, zscale);
@@ -250,14 +270,19 @@ int Realsense::Core::get(rs2_stream id, cv::Mat &image,
 
             // Update the color frame
             if (has_color) {
-                frame[RS2_STREAM_COLOR] = data.get_color_frame();
+                frame[RS2_STREAM_COLOR] = std::move(data.get_color_frame());
                 last_frame_id[RS2_STREAM_COLOR] =
                                     frame[RS2_STREAM_COLOR].get_frame_number();
             }
 
             // Update the depth frame
             if (has_depth) {
-                frame[RS2_STREAM_DEPTH]         = data.get_depth_frame();
+                rs2::frame depth = data.get_depth_frame();
+                depth = std::move(depth2disparity.process(depth));
+                depth = std::move(temporal_filter.process(depth));
+                depth = std::move(hole_filter.process(depth));
+                depth = std::move(disparity2depth.process(depth));
+                frame[RS2_STREAM_DEPTH] = std::move(depth);
                 last_frame_id[RS2_STREAM_DEPTH] = 
                                     frame[RS2_STREAM_DEPTH].get_frame_number();
             }

@@ -1,8 +1,8 @@
 /**
  *
- * @file      vpp/kernel/histogram.cpp
+ * @file      vpp/tracker/histogram.cpp
  *
- * @brief     This is the VPP histogram kernel implementation file
+ * @brief     This is the VPP histogram tracker implementation file
  *
  *            This file is part of the VPP framework (see link).
  *
@@ -17,12 +17,13 @@
 #include <algorithm>
 #include <functional>
 #include <opencv2/core/mat.hpp>
+#include <opencv2/video/tracking.hpp>
 
-#include "vpp/kernel/histogram.hpp"
+#include "vpp/tracker/histogram.hpp"
 #include "vpp/log.hpp"
 
 namespace VPP {
-namespace Kernel {
+namespace Tracker {
 namespace Histogram {
 
 bool Parameters::operator == (const Parameters &other) 
@@ -35,13 +36,13 @@ bool Parameters::operator == (const Parameters &other)
 
 Context::Context(Zone &zone, Zone::Copier &copier, unsigned int sz,
                  Parameters &params) noexcept
-    : VPP::Kernel::Context(zone, copier, sz), signature(), mask(),
-      config(params) {}
+    : VPP::Tracker::Context(zone, copier, sz), signature(), mask(), 
+      validity(1.0), config(params) {}
 
 void Context::initialise(View &view) noexcept {
     /* Use the cached histogram mode view and only make it to the zone if 
      * it is not available */
-    auto roi = std::move(view.image(config.mode, zone()));
+    auto roi = std::move(view.image(config.mode, zone(-1)));
 
     if (config.mask.valid) {
         inRange(roi.input(), config.mask.low, config.mask.high, mask);
@@ -63,6 +64,54 @@ double Context::compare(Context &other, enum cv::HistCompMethods method)
            "configuations!");
 
     return cv::compareHist(signature, other.signature, method);
+}
+
+void Context::camshift(View &view, cv::TermCriteria &term,
+                       float threshold) noexcept {
+    if (zone().valid()) {
+        /* Compute the projection with the current signature */
+        auto dest = std::move(back_project(view));
+
+        /* Flush the original signature for comparisons */
+        auto orig_signature = std::move(signature);
+
+        /* Get the new histogram signature of the same location with the new
+         * view, and compute an correlation histogram score */
+        initialise(view);
+        auto keep_score = cv::compareHist(signature, orig_signature, 
+                                          cv::HISTCMP_CORREL);
+        auto keep_signature = std::move(signature);
+
+        /* Proceed with the CamShift and compute the correlation histogram
+         * score with the CamShift result */
+        cv::Rect estimated(zone(-1));
+        cv::CamShift(dest, estimated, term);
+        auto &z = stack(zone(-1));
+        static_cast<cv::Rect &>(z) = estimated;
+        signature = std::move(cv::Mat());
+        initialise(view);
+        auto shift_score = cv::compareHist(signature, orig_signature, 
+                                           cv::HISTCMP_CORREL);
+
+        /* Keep only the highest score and update the signature accordingly.
+         * If both scores are below threshold, then keep the original position
+         * as the tracking is flawed obviously */
+        float score;
+        if ((shift_score > keep_score) && (shift_score > threshold) ) {
+            score = shift_score;
+            z.deproject(view);
+            zone(-2) = std::move(z);
+            zones.pop_back();
+        } else {
+            score = keep_score;
+            zones.pop_back();
+        }
+           
+        signature = std::move(orig_signature);
+
+        /* Apply the score factor to the current validity */
+        validity *= score;
+    }
 }
 
 cv::Mat Context::back_project(View &view) const noexcept {
@@ -103,7 +152,7 @@ Customisation::Error Engine::Ranges::setup() noexcept {
 
     /* Check if the size is correct */
     if ( (l.size() != h.size()) ) {
-        LOGE("Kernel::Engine::Ranges::setup(): low and high vectors "
+        LOGE("Tracker::Engine::Ranges::setup(): low and high vectors "
              "are of different sizes!");
         return Customisation::Error::INVALID_RANGE;
     }
@@ -112,7 +161,7 @@ Customisation::Error Engine::Ranges::setup() noexcept {
     auto hit = h.begin();
     for (auto lit = l.begin(); lit != l.end(); ) {
         if (*lit > *hit) {
-            LOGE("Kernel::Engine::Ranges::setup(): low boundary %f is "
+            LOGE("Tracker::Engine::Ranges::setup(): low boundary %f is "
                  "higher than the corresponding high boundary %f!", *lit, *hit);
             return Customisation::Error::INVALID_RANGE;
         }
@@ -125,7 +174,7 @@ Customisation::Error Engine::Ranges::setup() noexcept {
 } 
 
 Engine::Engine(const Zone::Copier &c, unsigned int sz) noexcept
-    : VPP::Kernel::Engine<Engine, Context>(c, sz), config() {
+    : VPP::Tracker::Engine<Engine, Context>(c, sz), config() {
     channels.denominate("channels")
             .describe("The selected channels for the histogram, can be any "
                       "combination of H, S, V or R, G, B or GRAY -"
@@ -147,7 +196,6 @@ Engine::Engine(const Zone::Copier &c, unsigned int sz) noexcept
     channels.define("Y:YUV",    Image::Channel::Y|Image::Channel::YUV);
     channels.define("U",        Image::Channel::U);
     channels.define("U:YUV",    Image::Channel::U|Image::Channel::YUV);
-    channels.define("V",        Image::Channel::V);
     channels.define("V:YUV",    Image::Channel::V|Image::Channel::YUV);
     channels.define("Y:YCrCb",  Image::Channel::Y|Image::Channel::YCrCb);
     channels.define("Cr",       Image::Channel::Cr);
@@ -194,22 +242,21 @@ Customisation::Error Engine::setup() noexcept {
     auto entries = config.channels.size();
 
     if (entries == 0) {
-        LOGE("Kernel::Engine::setup(): no channels selected!");
+        LOGE("Tracker::Engine::setup(): no channels selected!");
         return Customisation::Error::INVALID_RANGE;
     }
 
     /* Extract the channels mode and keep only the channel indexes */
-    int c = 0;
+    int cfg = 0;
     for (auto &v : config.channels) {
-        c |= v;
+        cfg |= v;
         v  = Image::Channel(v).id(); 
     }
-    auto cfg = Image::Channel(c);
-    auto mode = cfg.mode();
+    auto mode = Image::Channel::mode(cfg);
 
     switch (mode) {
         case 0:
-            LOGE("Kernel::Engine::setup(): Ambiguous colour space "
+            LOGE("Tracker::Engine::setup(): Ambiguous colour space "
                  "requested! Cannot get it from the provided channels.");
             return Customisation::Error::INVALID_VALUE;
             break;
@@ -219,14 +266,14 @@ Customisation::Error Engine::setup() noexcept {
         case Image::Mode::YCrCb:
             break;
         case Image::Mode::GRAY:
-            if ((cfg.id()) != 0) {
-                LOGE("Kernel::Engine::setup(): Requesting channel "
+            if (Image::Channel::id(cfg) != 0) {
+                LOGE("Tracker::Engine::setup(): Requesting channel "
                      "other than the luminance for a grayscale image!");
                 return Customisation::Error::INVALID_VALUE;
             }
             break;
         default:
-            LOGE("Kernel::Engine::setup(): Mixing channels from "
+            LOGE("Tracker::Engine::setup(): Mixing channels from "
                  "different color spaces!");
             return Customisation::Error::INVALID_VALUE;
             break;
@@ -237,9 +284,9 @@ Customisation::Error Engine::setup() noexcept {
     config.mode    = mode;
     config.entries = entries;
     config.sizes   = bins;
-    
+
     if (config.sizes.size() < entries) {
-        LOGE("Kernel::Engine::setup(): Only %d bins have been defined "
+        LOGE("Tracker::Engine::setup(): Only %d bins have been defined "
              "despite having %d channels selected!",
              static_cast<int>(config.sizes.size()),
              static_cast<int>(entries));
@@ -247,23 +294,25 @@ Customisation::Error Engine::setup() noexcept {
     }
 
     /* Create the actual histogram ranges */
-    std::vector<float> low  = mask.low;
-    std::vector<float> high = mask.high;
+    std::vector<float> low  = ranges.low;
+    std::vector<float> high = ranges.high;
     
-    if (low.size() < entries) {
-        LOGE("Kernel::Engine::setup(): Only %d histogram ranges have "
+    if ((low.size() < entries) || (high.size() < entries)) {
+        LOGE("Tracker::Engine::setup(): Only %d histogram ranges have "
              "been defined despite having %d channels selected!",
-             static_cast<int>(low.size()), static_cast<int>(entries));
+             static_cast<int>(std::min<unsigned int>(low.size(), high.size())),
+             static_cast<int>(entries));
         return Customisation::Error::INVALID_VALUE;
     }
 
     /* Store all ranges in the vector and build the configuration ranges */
     config.ranges.clear();
     config.storage.clear();
-    // to ensure the buffer is *always* valid
-    config.storage.reserve(low.size()*2);
+    /* reserve storage vector size to ensure the buffer is *always* valid */
+    config.storage.reserve(entries*2);
+    auto low_it  = low.begin();
     auto high_it = high.begin();
-    for (auto low_it = low.begin(); low_it != low.end(); ) {
+    for (unsigned int e = 0; e < entries; e++) {
         config.storage.emplace_back(*low_it);
         config.ranges.emplace_back(&config.storage.back());
         /* Upper side is exclusive */
@@ -273,8 +322,9 @@ Customisation::Error Engine::setup() noexcept {
     }
 
     /* Fill in the mask configuration (if any) */
-    low = mask.low;
-    if (low.size() == 0) {
+    low  = mask.low;
+    high = mask.high;
+    if ((low.size() == 0) || (high.size() == 0)) {
         config.mask.valid = false;
         return Customisation::Error::NONE;
     }
@@ -282,7 +332,7 @@ Customisation::Error Engine::setup() noexcept {
     config.mask.valid = true;
     if (mode == Image::Mode::GRAY) {
         if (low.size() != 1) {
-            LOGE("Kernel::Engine::setup(): Expected a single component "
+            LOGE("Tracker::Engine::setup(): Expected a single component "
                  "mask vector for gray image but have a %d-component vector!",
                  static_cast<int>(low.size()));
             return Customisation::Error::INVALID_VALUE;
@@ -291,7 +341,7 @@ Customisation::Error Engine::setup() noexcept {
         config.mask.high = cv::Scalar(high[0]);
     } else {
         if (low.size() != 3) {
-            LOGE("Kernel::Engine::setup(): Expected a 3-component mask "
+            LOGE("Tracker::Engine::setup(): Expected a 3-component mask "
                  "vector for colour image but have a %d-component vector!",
                  static_cast<int>(low.size()));
             return Customisation::Error::INVALID_VALUE;
@@ -313,5 +363,5 @@ void Engine::prepare(Zones &zs) noexcept {
 }
 
 }  // namespace Histogram
-}  // namespace Kernel
+}  // namespace Tracker
 }  // namespace VPP

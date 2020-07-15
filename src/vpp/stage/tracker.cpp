@@ -21,12 +21,15 @@ namespace Stage {
 
         
 Tracker::Tracker() noexcept 
-    : ForScene(true), kalman(latest, synchro, &added, &removed),
-      history(latest, synchro), none(latest), event(), synchro(), latest(), 
-      added(), removed() {
-    use("none",    none);
-    use("history", history);
-    use("kalman",  kalman);
+    : ForScene(true), ocv(latest, synchro, &added, &removed),
+      camshift(latest, synchro, &added, &removed),
+      kalman(latest, synchro, &added, &removed), history(latest, synchro),
+      none(latest), event(), synchro(), latest(), added(), removed() {
+    use("none",     none);
+    use("history",  history);
+    use("camshift", camshift);
+    use("kalman",   kalman);
+    use("ocv",      ocv);
 }
 
 void Tracker::snapshot(Scene &s) noexcept {

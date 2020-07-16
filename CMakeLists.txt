@@ -19,9 +19,13 @@ project(VPP LANGUAGES CXX)
 # The project version number.
 set(VERSION_MAJOR   0   CACHE STRING "Project major version number.")
 set(VERSION_MINOR   9   CACHE STRING "Project minor version number.")
-set(VERSION_PATCH   0   CACHE STRING "Project patch version number.")
+set(VERSION_PATCH   1   CACHE STRING "Project patch version number.")
 set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR} rev. ${VERSION_PATCH}")
 mark_as_advanced(VERSION_MAJOR VERSION_MINOR VERSION_PATCH VERSION_FULL)
+
+# PKGCONFIG installation directory
+set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" 
+    CACHE PATH "Installation directory for pkgconfig (.pc) files")
 
 # CMake version 3.1+ is required (to enable C++11 options)
 # CMake version 3.6+ is required (to enable clang-tidy commands)
@@ -135,8 +139,13 @@ if(TESSERACT_FOUND)
 	set(VPP_HAS_TESSERACT_SUPPORT TRUE)
 endif()
 
+# Configure config.hpp file
 configure_file (${PROJECT_SOURCE_DIR}/tpl/config.hpp.in
 	        ${PROJECT_SOURCE_DIR}/inc/vpp/config.hpp @ONLY)
+
+# Configure pkg-config file
+configure_file (${PROJECT_SOURCE_DIR}/tpl/vpp.pc.in
+	        ${PROJECT_BINARY_DIR}/vpp.pc @ONLY)
 
 # VPP library configuration
 include_directories(${PROJECT_SOURCE_DIR}/inc ${PROJECT_SOURCE_DIR}/src
@@ -299,6 +308,9 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/inc/vpp/
 	FILES_MATCHING PATTERN "*.hpp"
 	PATTERN "*/deprecated/*" EXCLUDE
 	PATTERN "*/deprecated" EXCLUDE)
+
+install(FILES ${PROJECT_BINARY_DIR}/vpp.pc 
+	DESTINATION "${INSTALL_PKGCONFIG_DIR}")
 
 # Building the d-scribe executable
 add_executable(d-scribe EXCLUDE_FROM_ALL ${EXE_FILES})

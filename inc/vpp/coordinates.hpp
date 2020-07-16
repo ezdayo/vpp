@@ -92,6 +92,11 @@ class Couple {
             return top / bot;
         }
 
+        inline float square() const noexcept {
+            auto d = cv::Point2f(x, y);
+            return (d.x * d.x) + (d.y * d.y);
+        }
+
         inline float square_dist(const Couple &other) const noexcept {
             auto d = cv::Point2f(x, y) - cv::Point2f(other.x, other.y);
             return (d.x * d.x) + (d.y * d.y);
@@ -149,6 +154,11 @@ class Triplet {
             ASSERT(id < length && id >=0,
                    "Invalid triplet index provided %d!", id);
             return *(&x+id);
+        }
+
+        inline float square() const noexcept {
+            auto d = cv::Point3f(x, y, z);
+            return (d.x * d.x) + (d.y * d.y) + (d.z * d.z);
         }
 
         inline float square_dist(const Triplet &other) const noexcept {

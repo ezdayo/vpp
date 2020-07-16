@@ -137,6 +137,7 @@ Zone &Zone::update(Zone &older, float recall_f) noexcept {
     /* Apply the memory forget factor to the older predictions! */
     older.predict(predictions, recall_f);
     predictions = std::move(older.predictions);
+    context = std::move(older.context);
 
     /* Keep older description if newer does not have any! */
     if (description.empty()) {

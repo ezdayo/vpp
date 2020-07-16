@@ -32,7 +32,7 @@ namespace Tracker {
     class Context {
         public:
             inline Context(Zone &o, Zone::Copier &c, unsigned int sz = 0) 
-                noexcept : original(&o), copier(c), zones() {
+                noexcept : uuid(o.uuid), original(&o), copier(c), zones() {
                 zones.reserve(sz);
                 stack(o);
             }
@@ -91,6 +91,7 @@ namespace Tracker {
                     original = newer.original;
                 }
                 newer.invalidate();
+                newer.uuid = 0; // A merged zone has no UUID no more!
             }
 
             inline const Zone &zone() const noexcept {
@@ -118,6 +119,7 @@ namespace Tracker {
                 return zones[offset_of(offset)];
             }
 
+            uint64_t          uuid;
             Zone *            original;
             Zone::Copier&     copier;
 
@@ -259,12 +261,17 @@ namespace Tracker {
                                 std::vector<Zone> *added = nullptr, 
                                 std::vector<Zone> *removed = nullptr) 
                 noexcept {
+                if (added != nullptr) {
+                    added->clear();
+                }
+                if (removed != nullptr) {
+                    removed->clear();
+                }
+                
                 for (auto it = storage.begin(); it != storage.end(); ) {
                     if (it->invalid()) {
-                        if (it->original != nullptr) {
-                            it->original->invalidate();
-                        }
-                        if (removed != nullptr) {
+                        if ( (it->uuid != 0) && (removed != nullptr) ) {
+                            it->zone().uuid = it->uuid;
                             removed->push_back(std::move(it->zone()));
                         }
                         it = storage.erase(it);
@@ -278,6 +285,10 @@ namespace Tracker {
                                 /* Use the recall factor for the non-original
                                  * predictions */
                                 it->original->update(z, recall);
+                            } else {
+                                if (added != nullptr) {
+                                    added->push_back(*it->original);
+                                }
                             }
                             /* Get the whole copy of the original zone here */
                             it->zone() = *it->original;
@@ -288,9 +299,6 @@ namespace Tracker {
                         /* The original zone references pointer is useless 
                          * after the first pass */
                         it->original = nullptr;
-                        if (added != nullptr) {
-                            added->push_back(static_cast<Zone>(it->zone()));
-                        }
                         ++it;
                     }
                 }

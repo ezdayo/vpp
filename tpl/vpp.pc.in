@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+include_dir=${prefix}/include/vpp
+
+Name: VPP
+Description: EzDaYo's Visual Pipeline Processor library
+Version: @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@
+Requires:
+Requires.private:
+Conflicts:
+Libs: -L${prefix}/lib -lvpp
+Cflags: -I${include_dir}
